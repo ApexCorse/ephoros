@@ -75,6 +75,10 @@ class MainTableCubit extends Cubit<MainTableState> {
   }
 
   void updateConstraints(BoxConstraints constraints) {
+    if (state._constraints == constraints) {
+      return;
+    }
+
     emit(state.copyWith(constraints: constraints));
 
     setElements(state._elements);
