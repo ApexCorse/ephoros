@@ -12,19 +12,19 @@ type Record struct {
 
 type Sensor struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
-	Name      string    `json:"name"`
+	Name      string    `gorm:"uniqueIndex:sensor_name_module" json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 
 	Records  []Record
-	ModuleID uint
+	ModuleID uint `gorm:"uniqueIndex:sensor_name_module"`
 }
 
 type Module struct {
 	ID   uint   `gorm:"primarykey" json:"id"`
-	Name string `json:"name"`
+	Name string `gorm:"uniqueIndex:module_name_section" json:"name"`
 
 	Sensors   []Sensor
-	SectionID uint
+	SectionID uint `gorm:"uniqueIndex:module_name_section"`
 }
 
 type Section struct {

@@ -8,90 +8,266 @@ import (
 )
 
 func TestInsertSection(t *testing.T) {
-	gormDb, cleanUp, err := TestDB()
-	if err != nil {
-		t.Fatal("cannot setup db")
-	}
-	defer cleanUp()
+	t.Run("should create section", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
 
-	db := NewDB(gormDb)
+		a := assert.New(t)
 
-	section := &Section{
-		Name: "Trial",
-	}
-	err = db.InsertSection(section)
-	assert.Nil(t, err)
+		db := NewDB(gormDb)
 
-	dbSection := &Section{}
-	tx := gormDb.First(dbSection, section.ID)
+		section := &Section{
+			Name: "Trial",
+		}
+		err = db.InsertSection(section)
+		a.Nil(err)
 
-	assert.Nil(t, tx.Error)
-	assert.Equal(t, section.Name, dbSection.Name)
-	assert.Len(t, dbSection.Modules, 0)
+		dbSection := &Section{}
+		tx := gormDb.First(dbSection, section.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(section.Name, dbSection.Name)
+		a.Len(dbSection.Modules, 0)
+	})
+
+	t.Run("cannot create two sections with same name", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
+
+		a := assert.New(t)
+
+		db := NewDB(gormDb)
+
+		section1 := &Section{
+			Name: "Trial",
+		}
+		err = db.InsertSection(section1)
+		a.Nil(err)
+
+		dbSection := &Section{}
+		tx := gormDb.First(dbSection, section1.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(section1.Name, dbSection.Name)
+		a.Len(dbSection.Modules, 0)
+
+		section2 := &Section{
+			Name: "Trial",
+		}
+		err = db.InsertSection(section2)
+		a.Error(err)
+		a.Contains(err.Error(), "unique constraint")
+	})
 }
 
 func TestInsertModule(t *testing.T) {
-	gormDb, cleanUp, err := TestDB()
-	if err != nil {
-		t.Fatal("cannot setup db")
-	}
-	defer cleanUp()
+	t.Run("should create a module given a section", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
 
-	db := NewDB(gormDb)
+		a := assert.New(t)
 
-	section := &Section{
-		Name: "Trial",
-	}
-	gormDb.Create(section)
+		db := NewDB(gormDb)
 
-	module := &Module{
-		Name:      "Trial",
-		SectionID: section.ID,
-	}
-	err = db.InsertModule(module)
-	assert.Nil(t, err)
+		section := &Section{
+			Name: "Trial",
+		}
+		gormDb.Create(section)
 
-	dbModule := &Module{}
-	tx := gormDb.First(dbModule, module.ID)
+		module := &Module{
+			Name:      "Trial",
+			SectionID: section.ID,
+		}
+		err = db.InsertModule(module)
+		a.Nil(err)
 
-	assert.Nil(t, tx.Error)
-	assert.Equal(t, module.Name, dbModule.Name)
-	assert.Len(t, dbModule.Sensors, 0)
+		dbModule := &Module{}
+		tx := gormDb.First(dbModule, module.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(module.Name, dbModule.Name)
+		a.Len(dbModule.Sensors, 0)
+	})
+
+	t.Run("should create a module with same name but two different sections", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
+
+		a := assert.New(t)
+
+		db := NewDB(gormDb)
+
+		section1 := &Section{
+			Name: "Trial1",
+		}
+		gormDb.Create(section1)
+
+		section2 := &Section{
+			Name: "Trial2",
+		}
+		gormDb.Create(section2)
+
+		module1 := &Module{
+			Name:      "Trial",
+			SectionID: section1.ID,
+		}
+		err = db.InsertModule(module1)
+		a.Nil(err)
+
+		module2 := &Module{
+			Name:      "Trial",
+			SectionID: section2.ID,
+		}
+		err = db.InsertModule(module2)
+		a.Nil(err)
+
+		dbModule1 := &Module{}
+		tx := gormDb.First(dbModule1, module1.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(module1.Name, dbModule1.Name)
+		a.Len(dbModule1.Sensors, 0)
+
+		dbModule2 := &Module{}
+		tx = gormDb.First(dbModule2, module2.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(module2.Name, dbModule2.Name)
+		a.Len(dbModule2.Sensors, 0)
+	})
+
+	t.Run("can't create two modules with same section", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
+
+		a := assert.New(t)
+
+		db := NewDB(gormDb)
+
+		section := &Section{
+			Name: "Trial1",
+		}
+		gormDb.Create(section)
+
+		module1 := &Module{
+			Name:      "Trial",
+			SectionID: section.ID,
+		}
+		err = db.InsertModule(module1)
+		a.Nil(err)
+
+		module2 := &Module{
+			Name:      "Trial",
+			SectionID: section.ID,
+		}
+		err = db.InsertModule(module2)
+		a.Error(err)
+
+		dbModule := &Module{}
+		tx := gormDb.First(dbModule, module1.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(module1.Name, dbModule.Name)
+		a.Len(dbModule.Sensors, 0)
+	})
 }
 
 func TestInsertSensor(t *testing.T) {
-	gormDb, cleanUp, err := TestDB()
-	if err != nil {
-		t.Fatal("cannot setup db")
-	}
-	defer cleanUp()
+	t.Run("should create sensor with given section and module", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
 
-	db := NewDB(gormDb)
+		a := assert.New(t)
 
-	section := &Section{
-		Name: "Trial",
-	}
-	gormDb.Create(section)
+		db := NewDB(gormDb)
 
-	module := &Module{
-		Name:      "Trial",
-		SectionID: section.ID,
-	}
-	gormDb.Create(module)
+		section := &Section{
+			Name: "Trial",
+		}
+		gormDb.Create(section)
 
-	sensor := &Sensor{
-		Name:     "Trial",
-		ModuleID: module.ID,
-	}
-	err = db.InsertSensor(sensor)
-	assert.Nil(t, err)
+		module := &Module{
+			Name:      "Trial",
+			SectionID: section.ID,
+		}
+		gormDb.Create(module)
 
-	dbSensor := &Sensor{}
-	tx := gormDb.First(dbSensor, sensor.ID)
+		sensor := &Sensor{
+			Name:     "Trial",
+			ModuleID: module.ID,
+		}
+		err = db.InsertSensor(sensor)
+		a.Nil(err)
 
-	assert.Nil(t, tx.Error)
-	assert.Equal(t, sensor.Name, dbSensor.Name)
-	assert.Len(t, dbSensor.Records, 0)
+		dbSensor := &Sensor{}
+		tx := gormDb.First(dbSensor, sensor.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(sensor.Name, dbSensor.Name)
+		a.Len(dbSensor.Records, 0)
+	})
+
+	t.Run("can't create two sensors with same module", func(t *testing.T) {
+		gormDb, cleanUp, err := TestDB()
+		if err != nil {
+			t.Fatal("cannot setup db")
+		}
+		defer cleanUp()
+
+		a := assert.New(t)
+
+		db := NewDB(gormDb)
+
+		section := &Section{
+			Name: "Trial",
+		}
+		gormDb.Create(section)
+
+		module := &Module{
+			Name:      "Trial",
+			SectionID: section.ID,
+		}
+		gormDb.Create(module)
+
+		sensor1 := &Sensor{
+			Name:     "Trial",
+			ModuleID: module.ID,
+		}
+		err = db.InsertSensor(sensor1)
+		a.Nil(err)
+
+		sensor2 := &Sensor{
+			Name:     "Trial",
+			ModuleID: module.ID,
+		}
+		err = db.InsertSensor(sensor2)
+		a.Error(err)
+
+		dbSensor := &Sensor{}
+		tx := gormDb.First(dbSensor, sensor1.ID)
+
+		a.Nil(tx.Error)
+		a.Equal(sensor1.Name, dbSensor.Name)
+		a.Len(dbSensor.Records, 0)
+	})
 }
 
 func TestInsertRecord(t *testing.T) {
