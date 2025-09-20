@@ -1,4 +1,4 @@
-name: ephoros/server/test
+name: ephoros-server-test
 
 services:
   db:
@@ -13,11 +13,10 @@ services:
       timeout: 1s
       retries: 20
   api:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile.test
-    env_file:
-      - ../.env
-    depends_on:
-      db:
-        condition: service_healthy
+    image: cosmtrek/air
+    working_dir: /app
+    restart: unless-stopped
+    env_file: ../.env
+    entrypoint: ["/go/bin/air", "--build.cmd", "go test ./...", "--build.bin", "./bin/main"]
+    volumes:
+      - ../:/app

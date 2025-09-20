@@ -1,4 +1,4 @@
-name: ephoros/server/dev
+name: ephoros-server-dev
 
 services:
   db:
@@ -13,13 +13,23 @@ services:
       timeout: 1s
       retries: 20
   api:
-    build:
-      context: ../
-      dockerfile: docker/Dockerfile.dev
+    image: cosmtrek/air
+    working_dir: /app
+    restart: unless-stopped
     ports:
       - "8080:8080"
-    env_file:
-      - ../.env
+    env_file: ../.env
+    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/main.go", "--build.bin", "./bin/main"]
+    volumes:
+      - ../:/app
     depends_on:
       db:
         condition: service_healthy
+  broker:
+    image: emqx/emqx-enterprise:5.10.0
+    environment:
+      - "EMQX_NODE_NAME=emqx@node1.emqx.com"
+      - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
+      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@node1.emqx.com,emqx@node2.emqx.com]"
+    ports:
+      - 18083:18083
