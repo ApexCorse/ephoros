@@ -30,8 +30,8 @@ func NewConfigManager(config *Config, db *db.DB) *ConfigManager {
 	}
 
 	if config != nil {
-		log.Printf("[CONFIG] Configuration manager created - Sensors: %d, MQTT user configs: %d",
-			len(config.SensorConfigs), len(config.MQTT))
+		log.Printf("[CONFIG] Configuration manager created - Sensors: %d",
+			len(config.SensorConfigs))
 	} else {
 		log.Printf("[CONFIG] Configuration manager created - No configuration provided")
 	}
@@ -51,7 +51,7 @@ func (m *ConfigManager) UpdateDB() error {
 		log.Printf("[CONFIG] Processing sensor config %d/%d - Name: %s, Section: %s, Module: %s",
 			i+1, len(m.config.SensorConfigs), sConfig.Name, sConfig.Section, sConfig.Module)
 
-		err := m.createSensorIfNotExists(sConfig.Section, sConfig.Module, sConfig.Name)
+		err := m.createSensorIfNotExists(&sConfig)
 		if err != nil {
 			log.Printf("[CONFIG] Error creating sensor - Name: %s, Section: %s, Module: %s, Error: %v",
 				sConfig.Name, sConfig.Section, sConfig.Module, err)
@@ -128,40 +128,44 @@ func (m *ConfigManager) createModuleIfNotExists(sectionName, moduleName string) 
 	return module, nil
 }
 
-func (m *ConfigManager) createSensorIfNotExists(sectionName, moduleName, sensorName string) error {
+func (m *ConfigManager) createSensorIfNotExists(sensorConfig *SensorConfig) error {
 	log.Printf("[CONFIG] Creating sensor if not exists - Section: %s, Module: %s, Sensor: %s",
-		sectionName, moduleName, sensorName)
+		sensorConfig.Section, sensorConfig.Module, sensorConfig.Name)
 
-	module, err := m.createModuleIfNotExists(sectionName, moduleName)
+	module, err := m.createModuleIfNotExists(sensorConfig.Section, sensorConfig.Module)
 	if err != nil {
 		log.Printf("[CONFIG] Error creating module for sensor - Section: %s, Module: %s, Sensor: %s, Error: %v",
-			sectionName, moduleName, sensorName, err)
+			sensorConfig.Section, sensorConfig.Module, sensorConfig.Name, err)
 		return err
 	}
 
-	_, err = m.db.GetSensorByNameAndModuleAndSection(sectionName, moduleName, sensorName, time.Now(), time.Now())
+	sensor, err := m.db.GetSensorByNameAndModuleAndSection(sensorConfig.Section, sensorConfig.Module, sensorConfig.Name, time.Now(), time.Now())
 
 	if err != nil {
 		log.Printf("[CONFIG] Sensor not found, creating new sensor - Section: %s, Module: %s, Sensor: %s",
-			sectionName, moduleName, sensorName)
+			sensorConfig.Section, sensorConfig.Module, sensorConfig.Name)
 
-		sensor := &db.Sensor{
-			Name:     sensorName,
+		sensor = &db.Sensor{
+			Name:     sensorConfig.Name,
 			ModuleID: module.ID,
 		}
 
 		err = m.db.InsertSensor(sensor)
 		if err != nil {
 			log.Printf("[CONFIG] Error creating sensor - Section: %s, Module: %s, Sensor: %s, Error: %v",
-				sectionName, moduleName, sensorName, err)
+				sensorConfig.Section, sensorConfig.Module, sensorConfig.Name, err)
 			return err
 		}
+
+		sensorConfig.ID = sensor.ID
 
 		log.Printf("[CONFIG] Sensor created successfully - ID: %d, Name: %s, ModuleID: %d",
 			sensor.ID, sensor.Name, sensor.ModuleID)
 	} else {
 		log.Printf("[CONFIG] Sensor already exists - Section: %s, Module: %s, Sensor: %s",
-			sectionName, moduleName, sensorName)
+			sensorConfig.Section, sensorConfig.Module, sensorConfig.Name)
+
+		sensorConfig.ID = sensor.ID
 	}
 
 	return nil
