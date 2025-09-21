@@ -2,7 +2,6 @@ package mqtt
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -26,13 +25,7 @@ func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error)
 		return false, nil
 	}
 
-	sensorData, err := getSensorDataFromTopic(strings.TrimPrefix(pr.Packet.Topic, "raw/"))
-	if err != nil {
-		return false, errors.Join(
-			errors.New("[HandleAddRecordToDB] error getting sensor data from topic"),
-			err,
-		)
-	}
+	cleanTopic := strings.TrimPrefix(pr.Packet.Topic, "raw/")
 
 	data := pr.Packet.Payload
 	if len(data) != 12 {
@@ -45,13 +38,13 @@ func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error)
 	timestamp := int64(timestampUint64)
 	actualTime := time.Unix(timestamp, 0)
 
-	sensorId, err := h.cfg.GetSensorIdFromData(sensorData.section, sensorData.module, sensorData.sensor)
+	sensor, err := h.db.GetSensorByTopic(cleanTopic)
 	if err != nil {
-		return false, fmt.Errorf("[HandleAddRecordToDB] sensor not found in configuration: %s", err.Error())
+		return false, fmt.Errorf("[HandleAddRecordToDB] sensor not found for topic '%s': %s", cleanTopic, err.Error())
 	}
 
 	err = h.db.InsertRecord(&db.Record{
-		SensorID: sensorId,
+		SensorID: sensor.ID,
 		//TODO: Fix to integer
 		Value:     float32(value),
 		CreatedAt: actualTime,
@@ -61,21 +54,4 @@ func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error)
 	}
 
 	return true, nil
-}
-
-type sensorData struct {
-	section, module, sensor string
-}
-
-func getSensorDataFromTopic(topic string) (*sensorData, error) {
-	parts := strings.Split(topic, "/")
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid topic: %s", topic)
-	}
-
-	return &sensorData{
-		section: parts[0],
-		module:  parts[1],
-		sensor:  parts[2],
-	}, nil
 }

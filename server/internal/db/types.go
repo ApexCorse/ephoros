@@ -14,6 +14,7 @@ type Sensor struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	Name      string    `gorm:"uniqueIndex:sensor_name_module" json:"name"`
 	CreatedAt time.Time `json:"created_at"`
+	Topic     string
 
 	Records  []Record
 	ModuleID uint `gorm:"uniqueIndex:sensor_name_module"`

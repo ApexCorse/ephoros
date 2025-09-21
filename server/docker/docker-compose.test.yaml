@@ -13,10 +13,10 @@ services:
       timeout: 1s
       retries: 20
   api:
-    image: cosmtrek/air
-    working_dir: /app
-    restart: unless-stopped
+    build:
+      dockerfile: docker/Dockerfile.test
+      context: ..
     env_file: ../.env
-    entrypoint: ["/go/bin/air", "--build.cmd", "go test ./...", "--build.bin", "./bin/main"]
-    volumes:
-      - ../:/app
+    depends_on:
+      db:
+        condition: service_healthy

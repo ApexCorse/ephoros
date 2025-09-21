@@ -72,15 +72,3 @@ func NewConfigFromReader(reader io.Reader) (*Config, error) {
 	log.Println("[CONFIG] All configurations validated successfully")
 	return config, nil
 }
-
-func (c *Config) GetSensorIdFromData(section, module, sensor string) (uint, error) {
-	for _, s := range c.SensorConfigs {
-		if s.Section == section &&
-			s.Module == module &&
-			s.Name == sensor {
-				return s.ID, nil
-			}
-	}
-
-	return 0, fmt.Errorf("could not get sensor id from: %s/%s/%s", section, module, sensor)
-}
