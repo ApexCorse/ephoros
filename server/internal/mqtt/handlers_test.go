@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ApexCorse/ephoros/server/internal/config"
 	"github.com/ApexCorse/ephoros/server/internal/db"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/stretchr/testify/assert"
@@ -37,20 +36,9 @@ func TestHandleAddRecordToDB(t *testing.T) {
 		sensor := &db.Sensor{
 			Name:     "NTC-1",
 			ModuleID: module.ID,
-			Topic: "Battery/Module-1/NTC-1",
+			Topic:    "Battery/Module-1/NTC-1",
 		}
 		gormDb.Create(sensor)
-
-		cfg := &config.Config{
-			SensorConfigs: []config.SensorConfig{
-				{
-					Name:    "NTC-1",
-					Module:  "Module-1",
-					Section: "Battery",
-					ID:      sensor.ID,
-				},
-			},
-		}
 
 		time := time.Now()
 		buf := &bytes.Buffer{}
@@ -70,7 +58,7 @@ func TestHandleAddRecordToDB(t *testing.T) {
 		finalBytes = append(finalBytes, timeBytes...)
 		finalBytes = append(finalBytes, valueBytes...)
 
-		handler := NewMQTTHandler(DB, cfg)
+		handler := NewMQTTHandler(DB)
 		pr := paho.PublishReceived{
 			Packet: &paho.Publish{
 				Topic:   "raw/Battery/Module-1/NTC-1",
@@ -92,7 +80,7 @@ func TestHandleAddRecordToDB(t *testing.T) {
 	t.Run("topic without 'raw/' prefix, return false and no error", func(t *testing.T) {
 		a := assert.New(t)
 
-		handler := NewMQTTHandler(nil, nil)
+		handler := NewMQTTHandler(nil)
 		pr := paho.PublishReceived{
 			Packet: &paho.Publish{
 				Topic: "Battery/Module-1/NTC-1",

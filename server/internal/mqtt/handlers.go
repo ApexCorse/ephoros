@@ -6,18 +6,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ApexCorse/ephoros/server/internal/config"
 	"github.com/ApexCorse/ephoros/server/internal/db"
 	"github.com/eclipse/paho.golang/paho"
 )
 
 type MQTTHandler struct {
-	db  *db.DB
-	cfg *config.Config
+	db *db.DB
 }
 
-func NewMQTTHandler(db *db.DB, cfg *config.Config) *MQTTHandler {
-	return &MQTTHandler{db: db, cfg: cfg}
+func NewMQTTHandler(db *db.DB) *MQTTHandler {
+	return &MQTTHandler{db: db}
 }
 
 func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error) {
