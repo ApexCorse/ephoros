@@ -7,14 +7,12 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ApexCorse/ephoros/server/internal/config"
 	"github.com/ApexCorse/ephoros/server/internal/db"
 	"github.com/gorilla/mux"
 )
 
 type APIConfig struct {
 	Address string
-	Config  *config.Config
 	DB      *db.DB
 	Router  *mux.Router
 }
@@ -23,7 +21,6 @@ type API struct {
 	db      *db.DB
 	r       *mux.Router
 	address string
-	config  *config.Config
 }
 
 func NewAPI(cfg *APIConfig) *API {
@@ -33,12 +30,6 @@ func NewAPI(cfg *APIConfig) *API {
 		log.Println("[API] db is nil, caution")
 	} else {
 		log.Println("[API] Database connection configured")
-	}
-
-	if cfg.Config == nil {
-		log.Println("[API] config is nil, caution")
-	} else {
-		log.Println("[API] Configuration loaded")
 	}
 
 	if cfg.Router == nil {
@@ -57,7 +48,6 @@ func NewAPI(cfg *APIConfig) *API {
 		db:      cfg.DB,
 		r:       cfg.Router,
 		address: cfg.Address,
-		config:  cfg.Config,
 	}
 }
 
