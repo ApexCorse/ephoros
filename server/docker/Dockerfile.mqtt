@@ -1,0 +1,21 @@
+FROM golang:alpine AS builder
+
+WORKDIR /opt/mqtt
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o bin/mqtt cmd/mqtt/main.go
+
+FROM alpine
+
+WORKDIR /opt/mqtt
+
+COPY --from=builder /opt/mqtt/bin/mqtt bin/mqtt 
+COPY --from=builder /opt/mqtt/configuration.json configuration.json
+
+RUN chmod +x bin/mqtt
+
+CMD ["./bin/mqtt"]

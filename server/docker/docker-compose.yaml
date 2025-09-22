@@ -1,4 +1,4 @@
-name: ephoros-server-dev
+name: ephoros-server
 
 services:
   db:
@@ -21,26 +21,19 @@ services:
       db:
         condition: service_healthy
   api:
-    image: cosmtrek/air
-    working_dir: /app
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
+    build:
+      dockerfile: docker/Dockerfile.api
+      context: ..
     env_file: ../.env
-    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/api/main.go", "--build.bin", "./bin/main"]
-    volumes:
-      - ../:/app
     depends_on:
       config:
         condition: service_completed_successfully
   mqtt_client:
-    image: cosmtrek/air
-    working_dir: /app
-    restart: unless-stopped
+    build:
+      dockerfile: docker/Dockerfile.mqtt
+      context: ..
     env_file: ../.env
-    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/mqtt/main.go", "--build.bin", "./bin/main"]
-    volumes:
-      - ../:/app
+    restart: unless-stopped
     depends_on:
       config:
         condition: service_completed_successfully
