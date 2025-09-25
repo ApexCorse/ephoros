@@ -3,6 +3,8 @@ name: ephoros-server-dev
 services:
   db:
     image: timescale/timescaledb:latest-pg17
+    networks:
+      - default
     env_file:
       - ../.env
     volumes:
@@ -16,12 +18,16 @@ services:
     build:
       dockerfile: docker/Dockerfile.config
       context: ..
+    networks:
+      - default
     env_file: ../.env
     depends_on:
       db:
         condition: service_healthy
   api:
     image: cosmtrek/air
+    networks:
+      - default
     working_dir: /app
     restart: unless-stopped
     ports:
@@ -33,22 +39,74 @@ services:
     depends_on:
       config:
         condition: service_completed_successfully
-  mqtt_client:
+      broker:
+        condition: service_healthy
+  saver:
     image: cosmtrek/air
+    networks:
+      - default
     working_dir: /app
     restart: unless-stopped
     env_file: ../.env
-    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/mqtt/main.go", "--build.bin", "./bin/main"]
+    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/saver/main.go", "--build.bin", "./bin/main"]
     volumes:
       - ../:/app
     depends_on:
       config:
         condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+  processor:
+    image: cosmtrek/air
+    networks:
+      - default
+    working_dir: /app
+    restart: unless-stopped
+    env_file: ../.env
+    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/processor/main.go", "--build.bin", "./bin/main"]
+    volumes:
+      - ../:/app
+    depends_on:
+      config:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+  simulator:
+    image: cosmtrek/air
+    networks:
+      - default
+    working_dir: /app
+    restart: unless-stopped
+    env_file: ../.env
+    entrypoint: ["/go/bin/air", "--build.cmd", "go build -o bin/main cmd/simulator/main.go", "--build.bin", "./bin/main"]
+    volumes:
+      - ../:/app
+    depends_on:
+      config:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
   broker:
     image: emqx/emqx-enterprise:5.10.0
+    hostname: docker.emqx.com
+    networks:
+      default:
+        aliases:
+          - broker
     environment:
-      - "EMQX_NODE_NAME=emqx@node1.emqx.com"
+      - "EMQX_NODE_NAME=emqx@docker.emqx.com"
       - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
-      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@node1.emqx.com,emqx@node2.emqx.com]"
+      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@docker.emqx.com]"
+      - "EMQX_HOST=docker.emqx.com"
     ports:
       - 18083:18083
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+networks:
+  default:
+    driver: bridge

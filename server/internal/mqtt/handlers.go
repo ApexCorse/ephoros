@@ -1,7 +1,7 @@
 package mqtt
 
 import (
-	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -20,23 +20,22 @@ func NewMQTTHandler(db *db.DB) *MQTTHandler {
 }
 
 func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error) {
-	if !strings.HasPrefix(pr.Packet.Topic, "raw/") {
+	if !strings.HasPrefix(pr.Packet.Topic, "clean/") {
 		return false, nil
 	}
 	log.Printf("[HandleAddRecordToDB] data incoming from topic: %s\n", pr.Packet.Topic)
 
-	cleanTopic := strings.TrimPrefix(pr.Packet.Topic, "raw/")
+	cleanTopic := strings.TrimPrefix(pr.Packet.Topic, "clean/")
 
-	data := pr.Packet.Payload
-	if len(data) != 12 {
-		return false, fmt.Errorf("[HandleAddRecordToDB] invalid payload length: %v", data)
+	data := struct {
+		Value     float32   `json:"value"`
+		Timestamp time.Time `json:"timestamp"`
+	}{}
+
+	err := json.Unmarshal(pr.Packet.Payload, &data)
+	if err != nil {
+		return false, fmt.Errorf("[HandleAddRecordToDB] couldn't parse JSON data: %s", err.Error())
 	}
-	unsigned := binary.BigEndian.Uint32(data[8:])
-	value := int32(unsigned)
-
-	timestampUint64 := binary.BigEndian.Uint64(data[:8])
-	timestamp := int64(timestampUint64)
-	actualTime := time.Unix(timestamp, 0)
 
 	sensor, err := h.db.GetSensorByTopic(cleanTopic)
 	if err != nil {
@@ -46,8 +45,8 @@ func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error)
 	err = h.db.InsertRecord(&db.Record{
 		SensorID: sensor.ID,
 		//TODO: Fix to integer
-		Value:     float32(value),
-		CreatedAt: actualTime,
+		Value:     float32(data.Value),
+		CreatedAt: data.Timestamp,
 	})
 	if err != nil {
 		return false, fmt.Errorf("[HandleAddRecordToDB] couldn't create record: %s", err.Error())

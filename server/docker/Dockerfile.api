@@ -13,8 +13,7 @@ FROM alpine
 
 WORKDIR /opt/api
 
-COPY --from=builder /opt/api/bin/api bin/api 
-COPY --from=builder /opt/api/configuration.json configuration.json
+COPY --from=builder /opt/api/bin/api bin/api
 
 RUN chmod +x bin/api
 

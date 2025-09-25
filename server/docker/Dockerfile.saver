@@ -1,0 +1,20 @@
+FROM golang:alpine AS builder
+
+WORKDIR /opt/saver
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o bin/saver cmd/saver/main.go
+
+FROM alpine
+
+WORKDIR /opt/saver
+
+COPY --from=builder /opt/saver/bin/saver bin/saver
+
+RUN chmod +x bin/saver
+
+CMD ["./bin/saver"]
