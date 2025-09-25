@@ -3,6 +3,7 @@ package mqtt
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ func (h *MQTTHandler) HandleAddRecordToDB(pr paho.PublishReceived) (bool, error)
 	if !strings.HasPrefix(pr.Packet.Topic, "raw/") {
 		return false, nil
 	}
+	log.Printf("[HandleAddRecordToDB] data incoming from topic: %s\n", pr.Packet.Topic)
 
 	cleanTopic := strings.TrimPrefix(pr.Packet.Topic, "raw/")
 
