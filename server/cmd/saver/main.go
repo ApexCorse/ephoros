@@ -48,8 +48,6 @@ func main() {
 
 	customDb := db.NewDB(gormDb)
 
-	mqttHandler := mqtt.NewMQTTHandler(customDb)
-
 	log.Println("[SAVER_MAIN] starting saver")
 	_, err = mqtt.NewMQTTClientBuilder(nil).
 		AddServers([]*url.URL{parsedUrl}).
@@ -60,7 +58,7 @@ func main() {
 			if _, err := cm.Subscribe(ctx, &paho.Subscribe{
 				Subscriptions: []paho.SubscribeOptions{
 					{
-						Topic: "clean/#",
+						Topic: "p/#",
 					},
 				},
 			}); err != nil {
@@ -71,7 +69,9 @@ func main() {
 			log.Printf("[SAVER_MAIN] MQTT connection error: %s\n", err.Error())
 		}).
 		AddClientId("saver").
-		AddOnPublishReceived(mqttHandler.HandleAddRecordToDB).
+		AddOnPublishReceived(func(pr paho.PublishReceived) (bool, error) {
+			return mqtt.HandleAddRecordToDB(customDb, pr)
+		}).
 		Build(ctx)
 	if err != nil {
 		log.Fatalf("[SAVER_MAIN] couldn't create MQTT client: %s\n", err.Error())
