@@ -125,7 +125,7 @@ func generateRandomData() ([]byte, error) {
 		return nil, err
 	}
 
-	timestamp := time.Now().UnixNano()
+	timestamp := time.Now().UnixMilli()
 	timestampBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(timestampBytes, uint64(timestamp))
 
