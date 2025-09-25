@@ -26,8 +26,10 @@ services:
         condition: service_healthy
   api:
     build:
-      dockerfile: docker/Dockerfile.api
+      dockerfile: docker/Dockerfile
       context: ..
+      args:
+        SERVICE: api
     networks:
       - default
     env_file: ../.env
@@ -38,8 +40,10 @@ services:
         condition: service_healthy
   saver:
     build:
-      dockerfile: docker/Dockerfile.saver
+      dockerfile: docker/Dockerfile
       context: ..
+      args:
+        SERVICE: saver
     networks:
       - default
     env_file: ../.env
@@ -50,8 +54,10 @@ services:
         condition: service_healthy
   processor:
     build:
-      dockerfile: docker/Dockerfile.processor
+      dockerfile: docker/Dockerfile
       context: ..
+      args:
+        SERVICE: processor
     networks:
       - default
     env_file: ../.env
@@ -62,8 +68,10 @@ services:
         condition: service_healthy
   simulator:
     build:
-      dockerfile: docker/Dockerfile.simulator
+      dockerfile: docker/Dockerfile
       context: ..
+      args:
+        SERVICE: simulator
     networks:
       - default
     env_file: ../.env
