@@ -200,6 +200,22 @@ func (d *DB) GetSensorByTopic(topic string) (*Sensor, error) {
 	return sensor, nil
 }
 
+func (d *DB) GetAllTopics() ([]string, error) {
+	sensors := make([]Sensor, 0)
+
+	if err := d.db.Select("topic").
+		Find(&sensors).Error; err != nil {
+		return nil, fmt.Errorf("couldn't retrieve sensors: %s", err.Error())
+	}
+
+	topics := make([]string, len(sensors))
+	for i := range sensors {
+		topics[i] = sensors[i].Topic
+	}
+
+	return topics, nil
+}
+
 func (d *DB) GetUserByToken(token string) (*User, error) {
 	user := &User{}
 	tx := d.db.Where("token = ?", token).First(user)
