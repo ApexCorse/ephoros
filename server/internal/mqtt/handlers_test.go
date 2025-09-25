@@ -58,7 +58,6 @@ func TestHandleAddRecordToDB(t *testing.T) {
 		finalBytes = append(finalBytes, timeBytes...)
 		finalBytes = append(finalBytes, valueBytes...)
 
-		handler := NewMQTTHandler(DB)
 		pr := paho.PublishReceived{
 			Packet: &paho.Publish{
 				Topic:   "raw/Battery/Module-1/NTC-1",
@@ -66,7 +65,7 @@ func TestHandleAddRecordToDB(t *testing.T) {
 			},
 		}
 
-		ok, err := handler.HandleAddRecordToDB(pr)
+		ok, err := HandleAddRecordToDB(DB, pr)
 		a.NoError(err)
 		a.True(ok)
 
@@ -80,14 +79,13 @@ func TestHandleAddRecordToDB(t *testing.T) {
 	t.Run("topic without 'raw/' prefix, return false and no error", func(t *testing.T) {
 		a := assert.New(t)
 
-		handler := NewMQTTHandler(nil)
 		pr := paho.PublishReceived{
 			Packet: &paho.Publish{
 				Topic: "Battery/Module-1/NTC-1",
 			},
 		}
 
-		ok, err := handler.HandleAddRecordToDB(pr)
+		ok, err := HandleAddRecordToDB(nil, pr)
 		a.NoError(err)
 		a.False(ok)
 	})
