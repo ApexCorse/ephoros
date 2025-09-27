@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ApexCorse/ephoros/server/internal/db"
 	"github.com/ApexCorse/ephoros/server/internal/mqtt"
+	"github.com/ApexCorse/ephoros/server/internal/utils"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 	"gorm.io/driver/postgres"
@@ -17,6 +19,11 @@ import (
 )
 
 func main() {
+	healthcheck := utils.NewHealtcheck()
+	http.HandleFunc("/readyz", healthcheck.ReadyzHandler)
+
+	go http.ListenAndServe(":6969", nil)
+
 	brokerUrl := os.Getenv("BROKER_URL")
 	dbUrl := os.Getenv("DB_URL")
 	if brokerUrl == "" || dbUrl == "" {
@@ -78,6 +85,8 @@ func main() {
 		os.Exit(1)
 	}
 	log.Println("[SAVER_MAIN] saver started")
+
+	healthcheck.SetReady(true)
 
 	<-ctx.Done()
 }

@@ -3,17 +3,23 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/ApexCorse/ephoros/server/internal/mqtt"
+	"github.com/ApexCorse/ephoros/server/internal/utils"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 )
 
 func main() {
+	healthcheck := utils.NewHealtcheck()
+	http.HandleFunc("/readyz", healthcheck.ReadyzHandler)
+	go http.ListenAndServe(":6969", nil)
+
 	brokerUrl := os.Getenv("BROKER_URL")
 	if brokerUrl == "" {
 		log.Fatalln("[PROCESSOR_MAIN] missing env variables")
@@ -59,6 +65,8 @@ func main() {
 		os.Exit(1)
 	}
 	log.Println("[PROCESSOR_MAIN] MQTT client started")
+
+	healthcheck.SetReady(true)
 
 	<-ctx.Done()
 }
