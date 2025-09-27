@@ -3,24 +3,18 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/ApexCorse/ephoros/server/internal/api"
 	"github.com/ApexCorse/ephoros/server/internal/db"
-	"github.com/ApexCorse/ephoros/server/internal/utils"
 	"github.com/gorilla/mux"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
-	healtcheck := utils.NewHealtcheck()
-	http.HandleFunc("/readyz", healtcheck.ReadyzHandler)
-	go http.ListenAndServe(":6969", nil)
-
 	dbUrl := os.Getenv("DB_URL")
 	apiAddress := os.Getenv("API_ADDRESS")
 	if dbUrl == "" {
@@ -58,8 +52,6 @@ func main() {
 	})
 	go api.Start()
 	log.Println("[API_MAIN] started server")
-
-	healtcheck.SetReady(true)
 
 	<-ctx.Done()
 }
