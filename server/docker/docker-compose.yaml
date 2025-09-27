@@ -33,11 +33,6 @@ services:
     networks:
       - default
     env_file: ../.env
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "http://localhost:6969/readyz"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     depends_on:
       config:
         condition: service_completed_successfully
@@ -52,11 +47,6 @@ services:
     networks:
       - default
     env_file: ../.env
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "http://localhost:6969/readyz"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     depends_on:
       config:
         condition: service_completed_successfully
@@ -71,11 +61,6 @@ services:
     networks:
       - default
     env_file: ../.env
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--timeout=3", "http://localhost:6969/readyz"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
     depends_on:
       config:
         condition: service_completed_successfully
@@ -94,10 +79,6 @@ services:
       config:
         condition: service_completed_successfully
       broker:
-        condition: service_healthy
-      saver:
-        condition: service_healthy
-      processor:
         condition: service_healthy
   broker:
     image: emqx/emqx-enterprise:5.10.0
