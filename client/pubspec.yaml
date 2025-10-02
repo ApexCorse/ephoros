@@ -15,7 +15,7 @@ dependencies:
     sdk: flutter
   flutter_bloc: ^9.1.1
   http: ^1.5.0
-  mqtt_client: ^10.10.0
+  mqtt5_client: ^4.14.0
   path_provider: ^2.1.5
 
 dev_dependencies:
