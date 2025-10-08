@@ -2,7 +2,9 @@
 #include <unity.h>
 
 #include "json/example_valid.h"
-#include "json/example_invalid.h"
+#include "json/example_invalid_1.h"
+#include "json/example_invalid_2.h"
+#include "json/example_invalid_3.h"
 
 void test_configuration_initialize() {
 	CONFIGURATION_configs* cfg = NULL;
@@ -19,12 +21,41 @@ void test_configuration_initialize() {
 	CONFIGURATION_cleanup(cfg);
 }
 
-void test_configuration_initialize_invalid_config() {
+// Missing topic
+void test_configuration_initialize_invalid_1_config() {
 	CONFIGURATION_configs* cfg = NULL;
 	CONFIGURATION_err err = CONFIGURATION_initialize(
 		&cfg,
-		example_invalid_json,
-		example_invalid_json_len
+		example_invalid_1_json,
+		example_invalid_1_json_len
+	);
+
+	TEST_ASSERT_NULL(cfg);
+	TEST_ASSERT_EQUAL(CONFIGURATION_err_invalid_config, err);
+	CONFIGURATION_cleanup(cfg);
+}
+
+// Missing id
+void test_configuration_initialize_invalid_2_config() {
+	CONFIGURATION_configs* cfg = NULL;
+	CONFIGURATION_err err = CONFIGURATION_initialize(
+		&cfg,
+		example_invalid_2_json,
+		example_invalid_2_json_len
+	);
+
+	TEST_ASSERT_NULL(cfg);
+	TEST_ASSERT_EQUAL(CONFIGURATION_err_invalid_config, err);
+	CONFIGURATION_cleanup(cfg);
+}
+
+// Field "sensors" is missing
+void test_configuration_initialize_invalid_3_config() {
+	CONFIGURATION_configs* cfg = NULL;
+	CONFIGURATION_err err = CONFIGURATION_initialize(
+		&cfg,
+		example_invalid_3_json,
+		example_invalid_3_json_len
 	);
 
 	TEST_ASSERT_NULL(cfg);
@@ -61,7 +92,9 @@ void app_main(void) {
   UNITY_BEGIN();
 
   RUN_TEST(test_configuration_initialize);
-  RUN_TEST(test_configuration_initialize_invalid_config);
+  RUN_TEST(test_configuration_initialize_invalid_1_config);
+  RUN_TEST(test_configuration_initialize_invalid_2_config);
+  RUN_TEST(test_configuration_initialize_invalid_3_config);
   RUN_TEST(test_configuration_find_topic_by_id);
   RUN_TEST(test_configuration_find_topic_by_id_not_found);
 

@@ -31,14 +31,14 @@ CONFIGURATION_err CONFIGURATION_initialize(
   if (!json) {
     free(array);
     free(bytesCopy);
-    return CONFIGURATION_err_parsing;
+    return CONFIGURATION_err_invalid_config;
   }
 
   const json_t* sensors = json_getProperty(json, "sensors");
   if (!sensors || json_getType(sensors) != JSON_ARRAY) {
     free(array);
     free(bytesCopy);
-    return CONFIGURATION_err_parsing;
+    return CONFIGURATION_err_invalid_config;
   }
 
   CONFIGURATION_sensor_config* configs_array = malloc(sizeof(CONFIGURATION_sensor_config)*CONFIGURATION_MAX_SENSOR_CONFIGS);
