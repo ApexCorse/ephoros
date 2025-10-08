@@ -1,0 +1,8 @@
+{
+	"sensorsConfigs": [
+		{	
+			"id" : "NTC1",
+			"topic": "Battery/Module-1/NTC-1"
+		}
+	]
+}
