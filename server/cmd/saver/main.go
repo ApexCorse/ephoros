@@ -58,7 +58,7 @@ func main() {
 			if _, err := cm.Subscribe(ctx, &paho.Subscribe{
 				Subscriptions: []paho.SubscribeOptions{
 					{
-						Topic: "p/#",
+						Topic: "data/#",
 					},
 				},
 			}); err != nil {

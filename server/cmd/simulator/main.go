@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	cryptoRand "crypto/rand"
-	"encoding/binary"
-	"fmt"
+	"encoding/json"
 	"log"
 	"math/rand"
 	"net/url"
@@ -104,13 +102,13 @@ func main() {
 
 			i := rand.Intn(len(topics))
 			topic := topics[i]
-			completeTopic := fmt.Sprintf("raw/%s", topic)
+			topic = "data/" + topic
 
-			if err := client.Publish(ctx, completeTopic, data); err != nil {
+			if err := client.Publish(ctx, topic, data); err != nil {
 				log.Fatalf("[SIMULATOR_MAIN] couldn't send data: %s\n", err.Error())
 				os.Exit(1)
 			}
-			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", completeTopic)
+			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", topic)
 
 			<-ctx.Done()
 		}
@@ -120,18 +118,21 @@ func main() {
 }
 
 func generateRandomData() ([]byte, error) {
-	randomBytes := make([]byte, 4)
-	if _, err := cryptoRand.Read(randomBytes); err != nil {
-		return nil, err
+	timestamp := time.Now()
+	value := rand.Float32()*1000 - 500
+
+	jsonPayload := struct {
+		Value     float32   `json:"value"`
+		Timestamp time.Time `json:"timestamp"`
+	}{
+		Value:     value,
+		Timestamp: timestamp,
 	}
 
-	timestamp := time.Now().UnixMilli()
-	timestampBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(timestampBytes, uint64(timestamp))
-
-	data := make([]byte, 12)
-	copy(data[:8], timestampBytes)
-	copy(data[8:], randomBytes)
+	data, err := json.Marshal(jsonPayload)
+	if err != nil {
+		return nil, err
+	}
 
 	return data, nil
 }
