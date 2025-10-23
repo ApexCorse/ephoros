@@ -6,6 +6,7 @@ type Record struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	Value     float32   `json:"value"`
+	Unit      string    `json:"unit"`
 
 	SensorID uint `json:"sensor_id"`
 }
