@@ -124,9 +124,11 @@ func generateRandomData() ([]byte, error) {
 	jsonPayload := struct {
 		Value     float32   `json:"value"`
 		Timestamp time.Time `json:"timestamp"`
+		Unit      string    `json:"unit"`
 	}{
 		Value:     value,
 		Timestamp: timestamp,
+		Unit:      "V",
 	}
 
 	data, err := json.Marshal(jsonPayload)

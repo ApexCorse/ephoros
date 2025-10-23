@@ -21,6 +21,7 @@ func HandleAddRecordToDB(DB *db.DB, pr paho.PublishReceived) (bool, error) {
 	data := struct {
 		Value     float32   `json:"value"`
 		Timestamp time.Time `json:"timestamp"`
+		Unit      string    `json:"unit"`
 	}{}
 
 	err := json.Unmarshal(pr.Packet.Payload, &data)
@@ -37,6 +38,7 @@ func HandleAddRecordToDB(DB *db.DB, pr paho.PublishReceived) (bool, error) {
 		SensorID:  sensor.ID,
 		Value:     data.Value,
 		CreatedAt: data.Timestamp,
+		Unit:      data.Unit,
 	})
 	if err != nil {
 		return false, fmt.Errorf("[HandleAddRecordToDB] couldn't create record: %s", err.Error())
