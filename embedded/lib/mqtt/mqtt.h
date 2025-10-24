@@ -22,13 +22,8 @@ typedef struct {
 } ephoros_mqtt_config_t;
 
 typedef struct {
-	float 		value;
-	uint64_t 	timestamp;
-} ephoros_mqtt_record_t;
-
-typedef struct {
-	const char* 						topic;
-	ephoros_mqtt_record_t* 	record;
+	const char* topic;
+	float       value;
 } ephoros_mqtt_message_t;
 
 ephoros_mqtt_err_t ephoros_mqtt_start(

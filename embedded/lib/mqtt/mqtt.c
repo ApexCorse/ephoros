@@ -1,12 +1,14 @@
+#include <time.h>
 #include <mqtt.h>
 
 #define MAX_PAYLOAD_LENGTH 512
 #define PAYLOAD_TEMPLATE "{"\
 	                       "  \"value\": %.4f,"\
-	                       "  \"timestamp\": %llu"\
+	                       "  \"timestamp\": %s"\
 	                       "}"
 
 ephoros_mqtt_err_t _validate_config(ephoros_mqtt_config_t* config);
+char* _get_current_time();
 
 ephoros_mqtt_err_t ephoros_mqtt_start(
 	ephoros_mqtt_client_t** client,
@@ -39,7 +41,10 @@ ephoros_mqtt_err_t ephoros_mqtt_publish(
 	char* payload = (char*)malloc(sizeof(char)*(MAX_PAYLOAD_LENGTH+1));
 	if (!payload) return ephoros_mqtt_err_allocation;
 
-	sprintf(payload, PAYLOAD_TEMPLATE, message->record->value, message->record->timestamp);
+	char* now = _get_current_time();
+	if (!now) return ephoros_mqtt_err_allocation;
+
+	sprintf(payload, PAYLOAD_TEMPLATE, message->value, now);
 
 	int id = esp_mqtt_client_publish(
 		client->client,
@@ -61,3 +66,15 @@ ephoros_mqtt_err_t _validate_config(ephoros_mqtt_config_t* config) {
 	return ephoros_mqtt_err_ok;
 }
 
+char* _get_current_time() {
+	time_t now = time(NULL);
+	struct tm now_info;
+
+	gmtime_r(&now, &now_info);
+
+	char* iso8691_buf = (char*)malloc(sizeof(char)*30);
+	if (!iso8691_buf) return NULL;
+
+	strftime(iso8691_buf, sizeof(iso8691_buf), "%Y-%m-%dT%H:%M:%SZ", &now_info);
+	return iso8691_buf;
+}
