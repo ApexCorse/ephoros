@@ -1,0 +1,21 @@
+name: ephoros-server-dev
+
+services:
+  simulator:
+    build:
+      dockerfile: ../docker/Dockerfile
+      context: ../server
+      args:
+        SERVICE: simulator
+    networks:
+      - default
+    env_file: ../.env
+    depends_on:
+      config:
+        condition: service_completed_successfully
+      broker:
+        condition: service_healthy
+
+networks:
+  default:
+    driver: bridge
