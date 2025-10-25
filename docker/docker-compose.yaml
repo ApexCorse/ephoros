@@ -16,8 +16,8 @@ services:
       retries: 20
   config:
     build:
-      dockerfile: docker/Dockerfile.config
-      context: ..
+      dockerfile: ../docker/Dockerfile.config
+      context: ../server
     networks:
       - default
     env_file: ../.env
@@ -26,8 +26,8 @@ services:
         condition: service_healthy
   api:
     build:
-      dockerfile: docker/Dockerfile
-      context: ..
+      dockerfile: ../docker/Dockerfile
+      context: ../server
       args:
         SERVICE: api
     networks:
@@ -40,24 +40,10 @@ services:
         condition: service_healthy
   saver:
     build:
-      dockerfile: docker/Dockerfile
-      context: ..
+      dockerfile: ../docker/Dockerfile
+      context: ../server
       args:
         SERVICE: saver
-    networks:
-      - default
-    env_file: ../.env
-    depends_on:
-      config:
-        condition: service_completed_successfully
-      broker:
-        condition: service_healthy
-  simulator:
-    build:
-      dockerfile: docker/Dockerfile
-      context: ..
-      args:
-        SERVICE: simulator
     networks:
       - default
     env_file: ../.env
@@ -87,6 +73,20 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+  client:
+    image: grafana/grafana
+    environment:
+      - GF_PLUGINS_PREINSTALL=grafana-mqtt-datasource
+    networks:
+      - default
+    ports:
+      - 3000:3000
+    depends_on:
+      broker:
+        condition: service_healthy
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning
+      - ../grafana/provisioning/dashboards/models:/var/lib/grafana/dashboards
 
 networks:
   default:
