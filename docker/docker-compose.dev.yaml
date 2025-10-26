@@ -11,8 +11,6 @@ services:
       - default
     env_file: ../.env
     depends_on:
-      config:
-        condition: service_completed_successfully
       broker:
         condition: service_healthy
 

@@ -14,30 +14,6 @@ services:
       interval: 1s
       timeout: 1s
       retries: 20
-  config:
-    build:
-      dockerfile: ../docker/Dockerfile.config
-      context: ../server
-    networks:
-      - default
-    env_file: ../.env
-    depends_on:
-      db:
-        condition: service_healthy
-  api:
-    build:
-      dockerfile: ../docker/Dockerfile
-      context: ../server
-      args:
-        SERVICE: api
-    networks:
-      - default
-    env_file: ../.env
-    depends_on:
-      config:
-        condition: service_completed_successfully
-      broker:
-        condition: service_healthy
   saver:
     build:
       dockerfile: ../docker/Dockerfile
@@ -48,8 +24,6 @@ services:
       - default
     env_file: ../.env
     depends_on:
-      config:
-        condition: service_completed_successfully
       broker:
         condition: service_healthy
   broker:
@@ -77,6 +51,7 @@ services:
     image: grafana/grafana
     environment:
       - GF_PLUGINS_PREINSTALL=grafana-mqtt-datasource
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
     networks:
       - default
     ports:
