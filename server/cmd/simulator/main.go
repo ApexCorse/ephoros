@@ -94,8 +94,6 @@ func main() {
 				os.Exit(1)
 			}
 			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", topic)
-
-			<-ctx.Done()
 		}
 
 		time.Sleep(time.Duration(interval) * time.Millisecond)
@@ -103,17 +101,16 @@ func main() {
 }
 
 func generateRandomData() ([]byte, error) {
-	timestamp := time.Now()
 	value := rand.Float32()*1000 - 500
 
 	jsonPayload := struct {
-		Value     float32   `json:"value"`
-		Timestamp time.Time `json:"timestamp"`
-		Unit      string    `json:"unit"`
+		Value float32   `json:"value"`
+		Time  time.Time `json:"time"`
+		Unit  string    `json:"unit"`
 	}{
-		Value:     value,
-		Timestamp: timestamp,
-		Unit:      "V",
+		Value: value,
+		Time:  time.Now(),
+		Unit:  "V",
 	}
 
 	data, err := json.Marshal(jsonPayload)
