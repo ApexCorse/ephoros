@@ -12,18 +12,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ApexCorse/ephoros/server/internal/db"
 	"github.com/ApexCorse/ephoros/server/internal/mqtt"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
 	brokerUrl := os.Getenv("BROKER_URL")
-	dbUrl := os.Getenv("DB_URL")
-	if brokerUrl == "" || dbUrl == "" {
+	if brokerUrl == "" {
 		log.Fatalln("[SIMULATOR_MAIN] missing env variables")
 		os.Exit(1)
 	}
@@ -43,25 +39,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	gormDb, err := gorm.Open(postgres.Open(dbUrl))
-	if err != nil {
-		log.Fatalf("[SIMULATOR_MAIN] couldn't open db: %s\n", err.Error())
-		os.Exit(1)
-	}
-	gormDb.AutoMigrate(
-		&db.User{},
-		&db.Section{},
-		&db.Module{},
-		&db.Sensor{},
-		&db.Record{},
-	)
-
-	customDb := db.NewDB(gormDb)
-
-	topics, err := customDb.GetAllTopics()
-	if err != nil {
-		log.Fatalf("[SIMULATOR_MAIN] couldn't get topics: %s\n", err.Error())
-		os.Exit(1)
+	topics := []string{
+		"Battery/Module-1/NTC-1",
+		"Battery/Module-1/NTC-2",
+		"Battery/Module-2/NTC-1",
+		"Engine/Module-1/NTC-1",
+		"Engine/Module-1/NTC-3",
+		"Engine/Module-4/NTC-1",
+		"Engine/Module-2/NTC-2",
 	}
 	log.Printf("[SIMULATOR_MAIN] got %d topics: %v\n", len(topics), topics)
 
