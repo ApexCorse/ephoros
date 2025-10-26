@@ -2,42 +2,26 @@ package db
 
 import "time"
 
-type Record struct {
-	ID        uint      `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Value     float32   `json:"value"`
-	Unit      string    `json:"unit"`
-
-	SensorID uint `json:"sensor_id"`
+type Metric struct {
+	Time  time.Time      `gorm:"primaryKey" json:"time"`
+	Topic string         `gorm:"primaryKey" json:"topic"`
+	Value float32        `json:"value"`
+	Unit  string         `json:"unit"`
+	Tags  map[string]any `json:"tags"`
 }
 
-type Sensor struct {
-	ID        uint      `gorm:"primarykey" json:"id"`
-	Name      string    `gorm:"uniqueIndex:sensor_name_module" json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	Topic     string
-
-	Records  []Record
-	ModuleID uint `gorm:"uniqueIndex:sensor_name_module"`
-}
-
-type Module struct {
-	ID   uint   `gorm:"primarykey" json:"id"`
-	Name string `gorm:"uniqueIndex:module_name_section" json:"name"`
-
-	Sensors   []Sensor
-	SectionID uint `gorm:"uniqueIndex:module_name_section"`
-}
-
-type Section struct {
-	ID   uint   `gorm:"primarykey" json:"id"`
-	Name string `gorm:"uniqueIndex" json:"name"`
-
-	Modules []Module
-}
-
-type User struct {
-	Token     string    `gorm:"primarykey" json:"token"`
-	CreatedAt time.Time `json:"created_at"`
-	Username  string    `gorm:"index" json:"username"`
-}
+const (
+	CREATE_METRIC_TABLE = `CREATE TABLE metrics (
+	"time" timestamptz not null,
+	topic text not null,
+	value real,
+	unit text,
+	tags jsonb
+)
+WITH(
+	timescaledb.hypertable,
+	timescaledb.partition_column='time',
+	timescaledb.chunk_interval='1 day'
+)
+`
+)

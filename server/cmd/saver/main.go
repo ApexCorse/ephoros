@@ -39,14 +39,15 @@ func main() {
 		os.Exit(1)
 	}
 	gormDb.AutoMigrate(
-		&db.User{},
-		&db.Section{},
-		&db.Module{},
-		&db.Sensor{},
-		&db.Record{},
+		&db.Metric{},
 	)
 
 	customDb := db.NewDB(gormDb)
+	err = customDb.ConfigureTimescale()
+	if err != nil {
+		log.Fatalf("[SAVER_MAIN] couldn't configure Timescale: %s\n", err.Error())
+		os.Exit(1)
+	}
 
 	log.Println("[SAVER_MAIN] starting saver")
 	_, err = mqtt.NewMQTTClientBuilder(nil).
