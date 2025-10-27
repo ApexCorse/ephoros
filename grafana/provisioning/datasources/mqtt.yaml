@@ -1,0 +1,14 @@
+apiVersion: 1
+
+prune: true
+
+datasources:
+  - name: MQTT
+    type: grafana-mqtt-datasource
+    uid: mqtt-datasource
+    jsonData:
+      uri: $BROKER_URL
+      username: $GRAFANA_MQTT_USERNAME
+      clientId: grafana_mqtt_datasource
+    secureJsonData:
+      password: $GRAFANA_MQTT_PASSWORD
