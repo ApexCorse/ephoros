@@ -1,31 +1,6 @@
 name: ephoros-server
 
 services:
-  db:
-    image: timescale/timescaledb:latest-pg17
-    networks:
-      - default
-    env_file:
-      - ../.env
-    volumes:
-      - ../.db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
-      interval: 1s
-      timeout: 1s
-      retries: 20
-  saver:
-    build:
-      dockerfile: ../docker/Dockerfile
-      context: ../server
-      args:
-        SERVICE: saver
-    networks:
-      - default
-    env_file: ../.env
-    depends_on:
-      broker:
-        condition: service_healthy
   broker:
     image: emqx/emqx-enterprise:5.10.0
     hostname: docker.emqx.com
