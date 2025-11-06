@@ -40,6 +40,10 @@ func parseTopicHierarchy(topics []string) (map[string]map[string][]string, error
 		firstLevel := topicParts[0]
 		secondLevel := topicParts[1]
 
+		if firstLevel == "" || secondLevel == "" {
+			return nil, fmt.Errorf("topic levels cannot be empty: %s", topic)
+		}
+
 		if _, exists := topicsMap[firstLevel]; !exists {
 			topicsMap[firstLevel] = make(map[string][]string)
 		}
