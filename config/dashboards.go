@@ -9,6 +9,10 @@ import (
 	"github.com/grafana/grafana-foundation-sdk/go/stat"
 )
 
+const (
+	topicPrefix = "data/"
+)
+
 var (
 	dataSourceRef = dashboard.DataSourceRef{
 		Uid:  cog.ToPtr("mqtt-datasource"),
@@ -16,51 +20,72 @@ var (
 	}
 )
 
-func createDashboardsWithMQTTTopics(topics []string) ([]dashboard.Dashboard, error) {
+// parseTopicHierarchy parses a list of MQTT topics into a hierarchical structure.
+// Topics are expected to follow the pattern: data/firstLevel/secondLevel
+func parseTopicHierarchy(topics []string) (map[string]map[string][]string, error) {
 	topicsMap := make(map[string]map[string][]string)
+
 	for _, topic := range topics {
-		if !strings.HasPrefix(topic, "data/") {
-			return nil, fmt.Errorf("each topic must start with 'data/': %s", topic)
+		if !strings.HasPrefix(topic, topicPrefix) {
+			return nil, fmt.Errorf("each topic must start with '%s': %s", topicPrefix, topic)
 		}
 
-		strippedTopic := strings.TrimPrefix(topic, "data/")
+		strippedTopic := strings.TrimPrefix(topic, topicPrefix)
 		topicParts := strings.Split(strippedTopic, "/")
 
-		_, ok := topicsMap[topicParts[0]]
-		if !ok {
-			topicsMap[topicParts[0]] = make(map[string][]string)
+		if len(topicParts) < 2 {
+			return nil, fmt.Errorf("topic must have at least 2 levels after '%s': %s", topicPrefix, topic)
 		}
 
-		topicsMap[topicParts[0]][topicParts[1]] = append(topicsMap[topicParts[0]][topicParts[1]], topic)
-		fmt.Println(topicsMap[topicParts[0]][topicParts[1]])
+		firstLevel := topicParts[0]
+		secondLevel := topicParts[1]
+
+		if _, exists := topicsMap[firstLevel]; !exists {
+			topicsMap[firstLevel] = make(map[string][]string)
+		}
+
+		topicsMap[firstLevel][secondLevel] = append(topicsMap[firstLevel][secondLevel], topic)
 	}
 
-	fmt.Println(topicsMap)
+	return topicsMap, nil
+}
 
-	dashboards := make([]dashboard.Dashboard, 0)
-	for firstLevel := range topicsMap {
-		dashboardBuilder := dashboard.NewDashboardBuilder(firstLevel).
-			Uid(fmt.Sprintf("generated-%s", firstLevel)).
-			Refresh("1m").
-			Time("now-1m", "now")
+// buildDashboardForLevel creates a dashboard for a given first-level topic hierarchy.
+func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string) (dashboard.Dashboard, error) {
+	dashboardBuilder := dashboard.NewDashboardBuilder(firstLevel).
+		Uid(fmt.Sprintf("generated-%s", firstLevel)).
+		Refresh("1m").
+		Time("now-1m", "now")
 
-		for secondLevel := range topicsMap[firstLevel] {
-			row := dashboard.NewRowBuilder(secondLevel).Datasource(dataSourceRef)
+	for secondLevel, topics := range secondLevels {
+		row := dashboard.NewRowBuilder(secondLevel).Datasource(dataSourceRef)
 
-			for _, topic := range topicsMap[firstLevel][secondLevel] {
-				row = row.WithPanel(
-					stat.NewPanelBuilder().
-						Title(topic).
-						WithTarget(NewMQTTQueryBuilder(topic)),
-				)
-			}
-
-			dashboardBuilder = dashboardBuilder.WithRow(row)
+		for _, topic := range topics {
+			row = row.WithPanel(
+				stat.NewPanelBuilder().
+					Title(topic).
+					WithTarget(NewMQTTQueryBuilder(topic)),
+			)
 		}
 
-		dashboard, err := dashboardBuilder.Build()
+		dashboardBuilder = dashboardBuilder.WithRow(row)
+	}
+
+	return dashboardBuilder.Build()
+}
+
+// createDashboardsWithMQTTTopics generates Grafana dashboards from a list of MQTT topics.
+func createDashboardsWithMQTTTopics(topics []string) ([]dashboard.Dashboard, error) {
+	topicsMap, err := parseTopicHierarchy(topics)
+	if err != nil {
+		return nil, err
+	}
+
+	dashboards := make([]dashboard.Dashboard, 0, len(topicsMap))
+	for firstLevel, secondLevels := range topicsMap {
+		dashboard, err := buildDashboardForLevel(firstLevel, secondLevels)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to build dashboard for '%s': %w", firstLevel, err)
 		}
 		dashboards = append(dashboards, dashboard)
 	}
