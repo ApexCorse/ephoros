@@ -10,11 +10,11 @@ Every piece of code should be written in a separate branch and merged into `main
 
 The branches should be named like `{component}/{type}/{description}`.
 
-- `component`: The component of the infrastructure you're working on. This can be one of `client`, `server`, `embedded`.
+- `component`: The component of the infrastructure you're working on. This can be one of `server`, `embedded`.
 - `type`: The type of code you're writing. This can be one of `feature`, `bugfix`, `refactor`, `test`, `enhancement`.
 - `description`: A brief description of the functionality of the code you're writing.
 
-Example: `client/feature/login-page`
+Example: `server/feature/new-endpoint`
 
 ### Creating a pull request
 
