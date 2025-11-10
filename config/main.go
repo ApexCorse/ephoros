@@ -38,7 +38,8 @@ func main() {
 
 	dashboards, err := createDashboardsWithMQTTTopics(topics)
 	if err != nil {
-		panic(err)
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 
 	for key, dashboard := range dashboards {
