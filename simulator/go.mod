@@ -3,6 +3,7 @@ module github.com/ApexCorse/ephoros/simulator
 go 1.25.1
 
 require (
+	github.com/ApexCorse/vera v0.0.0-20251030092832-2a4b5b476f0d
 	github.com/eclipse/paho.golang v0.23.0
 	github.com/stretchr/testify v1.11.1
 )
