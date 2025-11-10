@@ -11,6 +11,11 @@ import (
 )
 
 func main() {
+	dashboardsPath := os.Getenv("DASHBOARDS_PATH")
+	if dashboardsPath == "" {
+		fmt.Println("missing env DASHBOARDS_PATH")
+		os.Exit(1)
+	}
 	preconfigGrafana()
 
 	config, err := getDbcConfig()
@@ -27,11 +32,12 @@ func main() {
 	}
 
 	for key, dashboard := range dashboards {
-		file, err := os.Create(key + ".json")
+		file, err := os.Create(dashboardsPath + key + ".json")
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+		defer file.Close()
 
 		json, err := json.MarshalIndent(dashboard, "", "  ")
 		if err != nil {
