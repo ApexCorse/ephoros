@@ -27,7 +27,7 @@ providers:
 
 var (
 	dataSourceRef = dashboard.DataSourceRef{
-		Uid:  cog.ToPtr("MQTT"),
+		Uid:  cog.ToPtr("mqtt-datasource"),
 		Type: cog.ToPtr("grafana-mqtt-datasource"),
 	}
 )
@@ -74,12 +74,13 @@ func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string)
 		Time("now-1m", "now")
 
 	for secondLevel, topics := range secondLevels {
-		row := dashboard.NewRowBuilder(secondLevel).Datasource(dataSourceRef).Collapsed(false)
+		row := dashboard.NewRowBuilder(secondLevel)
 
 		for _, topic := range topics {
 			row = row.WithPanel(
 				stat.NewPanelBuilder().
 					Title(topic).
+					Datasource(dataSourceRef).
 					WithTarget(NewMQTTQueryBuilder(topic)),
 			)
 		}
