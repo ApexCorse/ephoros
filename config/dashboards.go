@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
@@ -11,6 +12,17 @@ import (
 
 const (
 	topicPrefix = "data/"
+	providers   = `apiVersion: 1
+
+providers:
+  - name: 'MQTT dashboards'
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards`
 )
 
 var (
@@ -95,4 +107,20 @@ func createDashboardsWithMQTTTopics(topics []string) (map[string]dashboard.Dashb
 	}
 
 	return dashboards, nil
+}
+
+func createProviderFile(path string) error {
+	path = path + "providers.yaml"
+	providersFile, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer providersFile.Close()
+
+	_, err = providersFile.Write([]byte(providers))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
