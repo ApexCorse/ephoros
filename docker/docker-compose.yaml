@@ -6,9 +6,10 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.config    
     volumes:
-      - ../grafana/provisioning/dashboards:/opt/config/
+      - ../:/opt
     environment:
-      - DBC_FILE_PATH=./config.dbc
+      - DBC_FILE_PATH=/opt/config.dbc
+      - DASHBOARDS_PATH=/opt/grafana/provisioning/dashboards/
   broker:
     image: emqx/emqx-enterprise:5.10.0
     hostname: docker.emqx.com
