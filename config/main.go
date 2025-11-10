@@ -21,34 +21,30 @@ func main() {
 
 	topics := getTopicsFromConfig(config)
 
-	// sampleDashboard, err := dashboard.NewDashboardBuilder("Custom query type").
-	// 	Uid("test-custom-query-type").
-	// 	Refresh("1m").
-	// 	Time("now-30m", "now").
-	// 	WithRow(dashboard.NewRowBuilder("Overview")).
-	// 	WithPanel(
-	// 		stat.NewPanelBuilder().
-	// 			Title("Sample panel").
-	// 			Datasource(dataSourceRef).
-	// 			WithTarget(
-	// 				NewMQTTQueryBuilder("data/#"),
-	// 			),
-	// 	).
-	// 	Build()
-	// if err != nil {
-	// 	panic(err)
-	// }
 	dashboards, err := createDashboardsWithMQTTTopics(topics)
 	if err != nil {
 		panic(err)
 	}
 
-	dashboardJson, err := json.MarshalIndent(dashboards, "", "  ")
-	if err != nil {
-		panic(err)
-	}
+	for key, dashboard := range dashboards {
+		file, err := os.Create(key + ".json")
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
 
-	fmt.Println(string(dashboardJson))
+		json, err := json.MarshalIndent(dashboard, "", "  ")
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		_, err = file.Write(json)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+	}
 }
 
 func getTopicsFromConfig(config *vera.Config) []string {
