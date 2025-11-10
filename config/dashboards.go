@@ -15,7 +15,7 @@ const (
 
 var (
 	dataSourceRef = dashboard.DataSourceRef{
-		Uid:  cog.ToPtr("mqtt-datasource"),
+		Uid:  cog.ToPtr("MQTT"),
 		Type: cog.ToPtr("grafana-mqtt-datasource"),
 	}
 )
@@ -62,7 +62,7 @@ func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string)
 		Time("now-1m", "now")
 
 	for secondLevel, topics := range secondLevels {
-		row := dashboard.NewRowBuilder(secondLevel).Datasource(dataSourceRef)
+		row := dashboard.NewRowBuilder(secondLevel).Datasource(dataSourceRef).Collapsed(false)
 
 		for _, topic := range topics {
 			row = row.WithPanel(
@@ -79,19 +79,19 @@ func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string)
 }
 
 // createDashboardsWithMQTTTopics generates Grafana dashboards from a list of MQTT topics.
-func createDashboardsWithMQTTTopics(topics []string) ([]dashboard.Dashboard, error) {
+func createDashboardsWithMQTTTopics(topics []string) (map[string]dashboard.Dashboard, error) {
 	topicsMap, err := parseTopicHierarchy(topics)
 	if err != nil {
 		return nil, err
 	}
 
-	dashboards := make([]dashboard.Dashboard, 0, len(topicsMap))
+	dashboards := make(map[string]dashboard.Dashboard)
 	for firstLevel, secondLevels := range topicsMap {
 		dashboard, err := buildDashboardForLevel(firstLevel, secondLevels)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build dashboard for '%s': %w", firstLevel, err)
 		}
-		dashboards = append(dashboards, dashboard)
+		dashboards[firstLevel] = dashboard
 	}
 
 	return dashboards, nil

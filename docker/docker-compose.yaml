@@ -1,6 +1,14 @@
 name: ephoros-server
 
 services:
+  config:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.config    
+    volumes:
+      - ../grafana/provisioning/dashboards:/opt/config/
+    environment:
+      - DBC_FILE_PATH=./config.dbc
   broker:
     image: emqx/emqx-enterprise:5.10.0
     hostname: docker.emqx.com
@@ -35,9 +43,11 @@ services:
     depends_on:
       broker:
         condition: service_healthy
+      config:
+        condition: service_completed_successfully
     volumes:
       - ../grafana/provisioning:/etc/grafana/provisioning
-      - ../grafana/provisioning/dashboards/models:/var/lib/grafana/dashboards
+      - ../grafana/provisioning/dashboards:/var/lib/grafana/dashboards
 
 networks:
   default:
