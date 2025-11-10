@@ -4,12 +4,12 @@ ARG SERVICE
 
 WORKDIR /opt/${SERVICE}
 
-COPY go.mod go.sum ./
+COPY ${SERVICE}/go.mod ${SERVICE}/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY ${SERVICE}/ .
 
-RUN go build -o bin/${SERVICE} cmd/${SERVICE}/main.go
+RUN go build -o bin/${SERVICE} .
 
 FROM alpine
 
@@ -17,8 +17,8 @@ ARG SERVICE
 
 WORKDIR /opt/${SERVICE}
 
-COPY --from=builder /opt/${SERVICE}/bin/${SERVICE} bin/main
+COPY --from=builder /opt/${SERVICE}/bin/${SERVICE} /usr/local/bin/main
 
-RUN chmod +x bin/main
+RUN chmod +x /usr/local/bin/main
 
-CMD ["./bin/main"]
+CMD ["/usr/local/bin/main"]

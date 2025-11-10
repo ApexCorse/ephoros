@@ -4,7 +4,9 @@ services:
   config:
     build:
       context: ..
-      dockerfile: docker/Dockerfile.config    
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: config
     volumes:
       - ../:/opt
     environment:

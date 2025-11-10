@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ApexCorse/ephoros/server/internal/mqtt"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 )
@@ -54,7 +53,7 @@ func main() {
 	defer stop()
 
 	log.Println("[SIMULATOR_MAIN] starting MQTT simulator")
-	client, err := mqtt.NewMQTTClientBuilder(nil).
+	client, err := NewMQTTClientBuilder(nil).
 		AddServers([]*url.URL{parsedUrl}).
 		AddKeepAlive(20).
 		AddCleanStartOnInitialConnection(false).
