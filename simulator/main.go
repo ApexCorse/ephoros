@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ApexCorse/vera"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
 )
@@ -38,15 +40,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	topics := []string{
-		"Battery/Module-1/NTC-1",
-		"Battery/Module-1/NTC-2",
-		"Battery/Module-2/NTC-1",
-		"Engine/Module-1/NTC-1",
-		"Engine/Module-1/NTC-3",
-		"Engine/Module-4/NTC-1",
-		"Engine/Module-2/NTC-2",
+	config, err := getDbcConfig()
+	if err != nil {
+		log.Fatalf("[SIMULATOR_MAIN] couldn't load DBC config: %s\n", err.Error())
+		os.Exit(1)
 	}
+
+	topics := getTopicsFromConfig(config)
 	log.Printf("[SIMULATOR_MAIN] got %d topics: %v\n", len(topics), topics)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -118,4 +118,35 @@ func generateRandomData() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// getDbcConfig reads and parses the config.dbc file
+func getDbcConfig() (*vera.Config, error) {
+	dbcFilePath := os.Getenv("DBC_FILE_PATH")
+	if dbcFilePath == "" {
+		return nil, fmt.Errorf("DBC_FILE_PATH env var is not set")
+	}
+
+	dbcFile, err := os.Open(dbcFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("error while opening DBC file: %w", err)
+	}
+	defer dbcFile.Close()
+
+	config, err := vera.Parse(dbcFile)
+	if err != nil {
+		return nil, fmt.Errorf("error in parsing DBC file: %w", err)
+	}
+
+	return config, nil
+}
+
+// getTopicsFromConfig extracts MQTT topics from the vera config
+func getTopicsFromConfig(config *vera.Config) []string {
+	topics := make([]string, len(config.Topics))
+	for i := range config.Topics {
+		topics[i] = config.Topics[i].Topic
+	}
+
+	return topics
 }
