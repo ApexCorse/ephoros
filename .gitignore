@@ -1,5 +1,7 @@
 .DS_Store
 .env*
-.db-data
 
 **/.vscode/settings.json
+
+grafana/provisioning/dashboards/*.json
+config.dbc
