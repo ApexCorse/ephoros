@@ -47,16 +47,21 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
-		defer file.Close()
 
 		json, err := json.MarshalIndent(dashboard, "", "  ")
 		if err != nil {
 			fmt.Println(err.Error())
+			file.Close()
 			os.Exit(1)
 		}
 
 		_, err = file.Write(json)
 		if err != nil {
+			fmt.Println(err.Error())
+			file.Close()
+			os.Exit(1)
+		}
+		if err := file.Close(); err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
