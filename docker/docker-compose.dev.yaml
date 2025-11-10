@@ -3,10 +3,8 @@ name: ephoros-server-dev
 services:
   simulator:
     build:
-      dockerfile: ../docker/Dockerfile
-      context: ../server
-      args:
-        SERVICE: simulator
+      dockerfile: ../docker/Dockerfile.simulator
+      context: ../simulator
     networks:
       - default
     env_file: ../.env
