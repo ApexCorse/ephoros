@@ -7,6 +7,8 @@ services:
       context: ..
       args:
         SERVICE: simulator
+    environment:
+      - DBC_FILE_PATH=/opt/config.dbc
     networks:
       - default
     env_file: ../.env
