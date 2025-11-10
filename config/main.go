@@ -18,6 +18,16 @@ func main() {
 	}
 	preconfigGrafana()
 
+	if err := cleanProvisioningFolder(dashboardsPath); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	if err := createProviderFile(dashboardsPath); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
 	config, err := getDbcConfig()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -87,4 +97,12 @@ func getDbcConfig() (*vera.Config, error) {
 	}
 
 	return config, nil
+}
+
+func cleanProvisioningFolder(path string) error {
+	if err := os.RemoveAll(path); err != nil {
+		return err
+	}
+
+	return os.MkdirAll(path, os.ModePerm)
 }

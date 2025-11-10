@@ -3,5 +3,5 @@
 
 **/.vscode/settings.json
 
-grafana/provisioning/dashboards/*.json
+grafana/provisioning/dashboards/
 config.dbc
