@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
@@ -23,18 +22,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get topics from environment variable, or use default
-	topicsEnv := os.Getenv("SIMULATOR_TOPICS")
-	var topics []string
-	if topicsEnv != "" {
-		topics = strings.Split(topicsEnv, ",")
-		// Trim whitespace from each topic
-		for i := range topics {
-			topics[i] = strings.TrimSpace(topics[i])
-		}
-	} else {
-		// Default topics if none provided
-		topics = []string{"sensor/1", "sensor/2", "sensor/3"}
+	// Get DBC file path from environment variable, or use default
+	dbcPath := os.Getenv("DBC_CONFIG_PATH")
+	if dbcPath == "" {
+		dbcPath = "config.dbc"
+	}
+
+	// Load topics from DBC file using vera package
+	topics, err := loadTopicsFromDBC(dbcPath)
+	if err != nil {
+		log.Fatalf("[SIMULATOR_MAIN] failed to load topics from DBC: %s\n", err.Error())
+		os.Exit(1)
 	}
 	log.Printf("[SIMULATOR_MAIN] using %d topics: %v\n", len(topics), topics)
 
