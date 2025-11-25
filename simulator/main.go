@@ -86,7 +86,6 @@ func main() {
 
 			i := rand.Intn(len(topics))
 			topic := topics[i]
-			topic = "data/" + topic
 
 			if err := client.Publish(ctx, topic, data); err != nil {
 				log.Fatalf("[SIMULATOR_MAIN] couldn't send data: %s\n", err.Error())
