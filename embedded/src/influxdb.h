@@ -27,6 +27,14 @@ typedef struct {
 /** Build an InfluxDB configuration from the Kconfig CONFIG_EPHOROS_INFLUXDB_* values. */
 influxdb_config_t influxdb_config_from_kconfig(void);
 
+/**
+ * Start the task that forwards decoded CAN signals to InfluxDB.
+ *
+ * The connection settings are read from Kconfig inside the module, so callers
+ * do not need to retain or expose an InfluxDB client or its credentials.
+ */
+esp_err_t influxdb_start(void);
+
 /** Initialize an InfluxDB client. Does not perform network I/O. */
 esp_err_t influxdb_client_init(
 	influxdb_client_t *client,
