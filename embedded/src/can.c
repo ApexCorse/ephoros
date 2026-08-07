@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "can.h"
 #include "esp_log.h"
@@ -22,6 +23,7 @@ typedef struct {
 } can_rx_frame_t;
 
 static QueueHandle_t s_rx_queue;
+static QueueHandle_t s_decoded_queue;
 
 static bool IRAM_ATTR can_rx_callback(twai_node_handle_t node,
 							  const twai_rx_done_event_data_t *event,
@@ -68,8 +70,21 @@ static void process_frame(const can_rx_frame_t *received) {
 
 	for (uint8_t i = 0; i < decoded.n_signals; ++i) {
 		const vera_decoded_signal_t *signal = &decoded.decoded_signals[i];
-		ESP_LOGI(TAG, "%s = %.2f %s", signal->name, signal->value,
-				 signal->unit);
+		can_decoded_signal_t event = {
+			.can_id = frame.header.id,
+			.value = signal->value,
+			.timestamp = received->header.timestamp,
+		};
+		memcpy(event.name, signal->name, sizeof(event.name));
+		memcpy(event.unit, signal->unit, sizeof(event.unit));
+		memcpy(event.topic, signal->topic, sizeof(event.topic));
+		event.name[sizeof(event.name) - 1] = '\0';
+		event.unit[sizeof(event.unit) - 1] = '\0';
+		event.topic[sizeof(event.topic) - 1] = '\0';
+
+		if (xQueueSend(s_decoded_queue, &event, 0) != pdTRUE) {
+			ESP_LOGD(TAG, "decoded-signal queue full; dropping %s", event.name);
+		}
 	}
 	free(decoded.decoded_signals);
 #endif
@@ -96,6 +111,13 @@ esp_err_t can_start(void) {
 	if (s_rx_queue == NULL) {
 		return ESP_ERR_NO_MEM;
 	}
+	s_decoded_queue = xQueueCreate(CONFIG_EPHOROS_CAN_DECODED_QUEUE_DEPTH,
+							  sizeof(can_decoded_signal_t));
+	if (s_decoded_queue == NULL) {
+		vQueueDelete(s_rx_queue);
+		s_rx_queue = NULL;
+		return ESP_ERR_NO_MEM;
+	}
 
 	twai_onchip_node_config_t config = {
 		.io_cfg = {
@@ -110,6 +132,8 @@ esp_err_t can_start(void) {
 	twai_node_handle_t node = NULL;
 	esp_err_t err = twai_new_node_onchip(&config, &node);
 	if (err != ESP_OK) {
+		vQueueDelete(s_decoded_queue);
+		s_decoded_queue = NULL;
 		vQueueDelete(s_rx_queue);
 		s_rx_queue = NULL;
 		return err;
@@ -121,6 +145,8 @@ esp_err_t can_start(void) {
 	err = twai_node_register_event_callbacks(node, &callbacks, NULL);
 	if (err != ESP_OK) {
 		twai_node_delete(node);
+		vQueueDelete(s_decoded_queue);
+		s_decoded_queue = NULL;
 		vQueueDelete(s_rx_queue);
 		s_rx_queue = NULL;
 		return err;
@@ -131,6 +157,8 @@ esp_err_t can_start(void) {
 				CONFIG_EPHOROS_CAN_TASK_STACK_SIZE, NULL,
 				CONFIG_EPHOROS_CAN_TASK_PRIORITY, &task) != pdPASS) {
 		twai_node_delete(node);
+		vQueueDelete(s_decoded_queue);
+		s_decoded_queue = NULL;
 		vQueueDelete(s_rx_queue);
 		s_rx_queue = NULL;
 		return ESP_ERR_NO_MEM;
@@ -140,6 +168,8 @@ esp_err_t can_start(void) {
 	if (err != ESP_OK) {
 		vTaskDelete(task);
 		twai_node_delete(node);
+		vQueueDelete(s_decoded_queue);
+		s_decoded_queue = NULL;
 		vQueueDelete(s_rx_queue);
 		s_rx_queue = NULL;
 		return err;
@@ -149,4 +179,13 @@ esp_err_t can_start(void) {
 			 CONFIG_EPHOROS_CAN_BITRATE, CONFIG_EPHOROS_CAN_RX_GPIO,
 			 CONFIG_EPHOROS_CAN_LISTEN_ONLY ? " (listen-only)" : "");
 	return ESP_OK;
+}
+
+bool can_receive_decoded_signal(can_decoded_signal_t *signal,
+							 TickType_t timeout) {
+	if (signal == NULL || s_decoded_queue == NULL) {
+		return false;
+	}
+
+	return xQueueReceive(s_decoded_queue, signal, timeout) == pdTRUE;
 }
