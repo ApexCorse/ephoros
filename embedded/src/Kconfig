@@ -1,0 +1,78 @@
+menu "Ephoros cellular modem"
+
+choice EPHOROS_MODEM_DCE
+    prompt "A7670G esp-modem command profile"
+    default EPHOROS_MODEM_DCE_A7670G
+    help
+        The A7670 is not a dedicated esp-modem device type. Start with the
+        generic implementation for PPP. Select SIM7600 compatibility only if
+        the modem firmware requires its command extensions.
+
+config EPHOROS_MODEM_DCE_A7670G
+    bool "A7670G generic PPP profile (recommended)"
+
+config EPHOROS_MODEM_DCE_SIM7600_COMPAT
+    bool "SIM7600-compatible DCE"
+
+endchoice
+
+config EPHOROS_MODEM_APN
+    string "Cellular APN"
+    default "internet"
+    help
+        The access-point name supplied by the SIM provider.
+
+choice EPHOROS_MODEM_PDP_TYPE
+    prompt "PDP protocol type"
+    default EPHOROS_MODEM_PDP_TYPE_IPV4
+
+config EPHOROS_MODEM_PDP_TYPE_IPV4
+    bool "IPv4 (IP)"
+
+config EPHOROS_MODEM_PDP_TYPE_IPV4V6
+    bool "Dual-stack IPv4/IPv6 (IPV4V6)"
+
+config EPHOROS_MODEM_PDP_TYPE_IPV6
+    bool "IPv6 only (IPV6)"
+
+endchoice
+
+config EPHOROS_MODEM_PDP_CONTEXT_ID
+    int "PDP context ID"
+    range 1 16
+    default 1
+    help
+        Most carriers use context ID 1. Change this only when the SIM
+        provider explicitly requires another context.
+
+config EPHOROS_MODEM_SIM_PIN
+    string "SIM PIN (leave empty when disabled)"
+    default ""
+    help
+        This value is compiled into the firmware. Use it only during
+        development; provision secrets from NVS in production.
+
+config EPHOROS_MODEM_UART_BAUD_RATE
+    int "Modem UART baud rate"
+    range 9600 921600
+    default 115200
+
+config EPHOROS_MODEM_POWER_ON_DELAY_MS
+    int "Delay after enabling modem power (ms)"
+    range 0 30000
+    default 500
+
+config EPHOROS_MODEM_PULSE_PWRKEY
+    bool "Pulse the modem power key at startup"
+    default n
+    help
+        Enable only when the modem is not already started after GPIO12 is
+        enabled. The power-key pulse is active low on this board.
+
+config EPHOROS_MODEM_PWRKEY_PULSE_MS
+    int "Power-key pulse duration (ms)"
+    depends on EPHOROS_MODEM_PULSE_PWRKEY
+    range 100 5000
+    default 1000
+
+endmenu
