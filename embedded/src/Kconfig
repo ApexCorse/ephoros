@@ -147,6 +147,14 @@ config EPHOROS_CAN_RX_QUEUE_DEPTH
     default 32
     range 1 256
 
+config EPHOROS_CAN_DECODED_QUEUE_DEPTH
+    int "Decoded-signal queue depth"
+    default 128
+    range 1 1024
+    help
+        Number of decoded signals available to application tasks. New signals
+        are dropped when this queue is full, keeping CAN reception nonblocking.
+
 config EPHOROS_CAN_TASK_STACK_SIZE
     int "CAN decoder task stack size"
     default 4096
