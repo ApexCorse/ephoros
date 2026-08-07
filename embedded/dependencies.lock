@@ -12,7 +12,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.0
+    version: 6.0.1
 direct_dependencies:
 - espressif/esp_modem
 manifest_hash: 4b0b732c0c2692038040de58b134ded385d96724189149411104f50f0c4eb8dd
