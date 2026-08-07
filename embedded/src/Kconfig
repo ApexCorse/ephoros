@@ -1,4 +1,38 @@
-menu "Ephoros cellular modem"
+menu "Ephoros network and modem"
+
+choice EPHOROS_NETWORK_BACKEND
+    prompt "Network backend"
+    default EPHOROS_NETWORK_CELLULAR
+    help
+        Select the network interface used by the application. Wi-Fi uses the
+        ESP32 station interface; cellular uses the A7670G PPP interface.
+
+config EPHOROS_NETWORK_CELLULAR
+    bool "A7670G cellular modem (PPP)"
+
+config EPHOROS_NETWORK_WIFI
+    bool "Wi-Fi station"
+
+endchoice
+
+if EPHOROS_NETWORK_WIFI
+
+config EPHOROS_WIFI_SSID
+    string "Wi-Fi SSID"
+    default ""
+    help
+        The access point name used by the ESP32 station interface.
+
+config EPHOROS_WIFI_PASSWORD
+    string "Wi-Fi password"
+    default ""
+    help
+        WPA/WPA2 passphrase. This value is compiled into the firmware.
+        Provision it from NVS instead for production devices.
+
+endif
+
+if EPHOROS_NETWORK_CELLULAR
 
 choice EPHOROS_MODEM_DCE
     prompt "A7670G esp-modem command profile"
@@ -74,5 +108,7 @@ config EPHOROS_MODEM_PWRKEY_PULSE_MS
     depends on EPHOROS_MODEM_PULSE_PWRKEY
     range 100 5000
     default 1000
+
+endif
 
 endmenu
