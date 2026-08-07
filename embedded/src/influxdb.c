@@ -7,12 +7,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "can.h"
 #include "esp_crt_bundle.h"
 #include "esp_http_client.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "sdkconfig.h"
 
 #define INFLUXDB_DEFAULT_TIMEOUT_MS 10000
 #define INFLUXDB_LINE_BUFFER_SIZE 512
+#define INFLUXDB_TASK_STACK_SIZE 4096
+#define INFLUXDB_TASK_PRIORITY 4
+
+static const char *TAG = "influxdb";
+static influxdb_client_t s_client;
+static TaskHandle_t s_task;
 
 static bool valid_config(const influxdb_config_t *config) {
 	return config != NULL && config->write_url != NULL &&
@@ -26,6 +36,45 @@ influxdb_config_t influxdb_config_from_kconfig(void) {
 		.token = CONFIG_EPHOROS_INFLUXDB_TOKEN,
 		.timeout_ms = CONFIG_EPHOROS_INFLUXDB_TIMEOUT_MS,
 	};
+}
+
+static void influxdb_task(void *arg) {
+	const influxdb_client_t *client = arg;
+	can_decoded_signal_t signal;
+
+	for (;;) {
+		if (!can_receive_decoded_signal(&signal, portMAX_DELAY)) {
+			continue;
+		}
+
+		/* TWAI timestamps are not Unix timestamps, so let InfluxDB assign it. */
+		esp_err_t err = influxdb_write_number(client, "can_signal", "name",
+								signal.name, "value", signal.value, 0);
+		if (err != ESP_OK) {
+			ESP_LOGW(TAG, "failed to write CAN signal %s: %s", signal.name,
+					 esp_err_to_name(err));
+		}
+	}
+}
+
+esp_err_t influxdb_start(void) {
+	if (s_task != NULL) {
+		return ESP_ERR_INVALID_STATE;
+	}
+
+	influxdb_config_t config = influxdb_config_from_kconfig();
+	esp_err_t err = influxdb_client_init(&s_client, &config);
+	if (err != ESP_OK) {
+		return err;
+	}
+
+	if (xTaskCreate(influxdb_task, "influxdb", INFLUXDB_TASK_STACK_SIZE,
+					&s_client, INFLUXDB_TASK_PRIORITY, &s_task) != pdPASS) {
+		return ESP_ERR_NO_MEM;
+	}
+
+	ESP_LOGI(TAG, "InfluxDB telemetry task started");
+	return ESP_OK;
 }
 
 esp_err_t influxdb_client_init(
