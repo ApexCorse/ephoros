@@ -115,8 +115,36 @@ endmenu
 
 menu "Ephoros CAN receiver"
 
+config EPHOROS_CAN_ENABLED
+    bool "Enable CAN receiver"
+    default y
+    help
+        Start the ESP32 TWAI receiver. Disable this when developing without a
+        CAN bus; the telemetry simulator can then provide synthetic signals.
+
+config EPHOROS_CAN_SIMULATOR
+    bool "Simulate CAN telemetry"
+    depends on !EPHOROS_CAN_ENABLED
+    default n
+    help
+        Generate values for the MQTT topics declared in config.dbc and feed
+        them to InfluxDB. The topic catalog is generated at build time.
+
+config EPHOROS_CAN_SIMULATOR_INTERVAL_MS
+    int "Simulator sample interval (ms)"
+    depends on EPHOROS_CAN_SIMULATOR
+    default 1000
+    range 10 60000
+
+config EPHOROS_CAN_SIMULATOR_SEED
+    int "Simulator random seed (0 = random at boot)"
+    depends on EPHOROS_CAN_SIMULATOR
+    default 0
+    range 0 2147483647
+
 config EPHOROS_CAN_RX_GPIO
     int "CAN RX GPIO"
+    depends on EPHOROS_CAN_ENABLED
     default 34
     range 0 48
     help
@@ -124,6 +152,7 @@ config EPHOROS_CAN_RX_GPIO
 
 config EPHOROS_CAN_TX_GPIO
     int "CAN TX GPIO"
+    depends on EPHOROS_CAN_ENABLED
     default -1
     range -1 48
     help
@@ -132,11 +161,13 @@ config EPHOROS_CAN_TX_GPIO
 
 config EPHOROS_CAN_BITRATE
     int "CAN bitrate (bit/s)"
+    depends on EPHOROS_CAN_ENABLED
     default 500000
     range 10000 1000000
 
 config EPHOROS_CAN_LISTEN_ONLY
     bool "Listen-only mode"
+    depends on EPHOROS_CAN_ENABLED
     default y
     help
         Receive frames without transmitting acknowledgements or error frames.
@@ -144,11 +175,13 @@ config EPHOROS_CAN_LISTEN_ONLY
 
 config EPHOROS_CAN_RX_QUEUE_DEPTH
     int "Received-frame queue depth"
+    depends on EPHOROS_CAN_ENABLED
     default 32
     range 1 256
 
 config EPHOROS_CAN_DECODED_QUEUE_DEPTH
     int "Decoded-signal queue depth"
+    depends on EPHOROS_CAN_ENABLED
     default 128
     range 1 1024
     help
@@ -157,20 +190,24 @@ config EPHOROS_CAN_DECODED_QUEUE_DEPTH
 
 config EPHOROS_CAN_TASK_STACK_SIZE
     int "CAN decoder task stack size"
+    depends on EPHOROS_CAN_ENABLED
     default 4096
     range 2048 16384
 
 config EPHOROS_CAN_TASK_PRIORITY
     int "CAN decoder task priority"
+    depends on EPHOROS_CAN_ENABLED
     default 5
     range 1 24
 
 config EPHOROS_CAN_LOG_RECEIVED_FRAMES
     bool "Log received frame headers"
+    depends on EPHOROS_CAN_ENABLED
     default n
 
 config EPHOROS_CAN_VERA_DECODER
     bool "Decode frames with Vera"
+    depends on EPHOROS_CAN_ENABLED
     default n
     help
         Generate Vera's ESP-IDF adapter with:
