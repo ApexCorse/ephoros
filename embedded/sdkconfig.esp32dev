@@ -2016,8 +2016,10 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # end of Wi-Fi Provisioning Manager
 
 #
-# Ephoros cellular modem
+# Ephoros network and modem
 #
+CONFIG_EPHOROS_NETWORK_CELLULAR=y
+# CONFIG_EPHOROS_NETWORK_WIFI is not set
 CONFIG_EPHOROS_MODEM_DCE_A7670G=y
 # CONFIG_EPHOROS_MODEM_DCE_SIM7600_COMPAT is not set
 CONFIG_EPHOROS_MODEM_APN="internet"
@@ -2029,7 +2031,7 @@ CONFIG_EPHOROS_MODEM_SIM_PIN=""
 CONFIG_EPHOROS_MODEM_UART_BAUD_RATE=115200
 CONFIG_EPHOROS_MODEM_POWER_ON_DELAY_MS=500
 # CONFIG_EPHOROS_MODEM_PULSE_PWRKEY is not set
-# end of Ephoros cellular modem
+# end of Ephoros network and modem
 
 #
 # esp-modem
