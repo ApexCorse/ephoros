@@ -3317,6 +3317,17 @@ CONFIG_EPHOROS_CAN_TASK_PRIORITY=5
 # end of Ephoros CAN receiver
 
 #
+# InfluxDB telemetry
+#
+# default:
+CONFIG_EPHOROS_INFLUXDB_WRITE_URL=""
+# default:
+CONFIG_EPHOROS_INFLUXDB_TOKEN=""
+# default:
+CONFIG_EPHOROS_INFLUXDB_TIMEOUT_MS=10000
+# end of InfluxDB telemetry
+
+#
 # esp-modem
 #
 # default:

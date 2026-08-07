@@ -13,5 +13,5 @@ endif()
 idf_component_register(
 	SRCS ${app_sources}
 	INCLUDE_DIRS ${app_include_dirs}
-	REQUIRES esp_modem esp_driver_twai
+	REQUIRES esp_http_client esp_modem esp_driver_twai mbedtls
 )

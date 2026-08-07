@@ -179,3 +179,30 @@ config EPHOROS_CAN_VERA_DECODER
         until a project DBC is available.
 
 endmenu
+
+menu "InfluxDB telemetry"
+
+config EPHOROS_INFLUXDB_WRITE_URL
+	string "InfluxDB Write API URL"
+	default ""
+	help
+		The complete InfluxDB 2.x Write API URL, including its organization,
+		bucket, and precision query parameters. For example:
+		https://influx.example.com/api/v2/write?org=apex&bucket=telemetry&precision=ns
+
+config EPHOROS_INFLUXDB_TOKEN
+	string "InfluxDB API token"
+	default ""
+	help
+		An API token with write permission for the configured bucket. This value
+		is stored in sdkconfig, so do not commit a production token. Prefer NVS
+		or another device-provisioning mechanism for production firmware.
+
+config EPHOROS_INFLUXDB_TIMEOUT_MS
+	int "HTTP write timeout (ms)"
+	default 10000
+	range 1000 60000
+	help
+		Maximum time allowed for one InfluxDB write request.
+
+endmenu
