@@ -112,3 +112,62 @@ config EPHOROS_MODEM_PWRKEY_PULSE_MS
 endif
 
 endmenu
+
+menu "Ephoros CAN receiver"
+
+config EPHOROS_CAN_RX_GPIO
+    int "CAN RX GPIO"
+    default 34
+    range 0 48
+    help
+        ESP32 GPIO connected to the RXD output of the CAN transceiver.
+
+config EPHOROS_CAN_TX_GPIO
+    int "CAN TX GPIO"
+    default -1
+    range -1 48
+    help
+        ESP32 GPIO connected to the TXD input of the CAN transceiver. Set to
+        -1 when using listen-only mode and no TX connection is needed.
+
+config EPHOROS_CAN_BITRATE
+    int "CAN bitrate (bit/s)"
+    default 500000
+    range 10000 1000000
+
+config EPHOROS_CAN_LISTEN_ONLY
+    bool "Listen-only mode"
+    default y
+    help
+        Receive frames without transmitting acknowledgements or error frames.
+        Disable only when this node must actively participate on the CAN bus.
+
+config EPHOROS_CAN_RX_QUEUE_DEPTH
+    int "Received-frame queue depth"
+    default 32
+    range 1 256
+
+config EPHOROS_CAN_TASK_STACK_SIZE
+    int "CAN decoder task stack size"
+    default 4096
+    range 2048 16384
+
+config EPHOROS_CAN_TASK_PRIORITY
+    int "CAN decoder task priority"
+    default 5
+    range 1 24
+
+config EPHOROS_CAN_LOG_RECEIVED_FRAMES
+    bool "Log received frame headers"
+    default n
+
+config EPHOROS_CAN_VERA_DECODER
+    bool "Decode frames with Vera"
+    default n
+    help
+        Generate Vera's ESP-IDF adapter with:
+            vera -f path/to/network.dbc -sdk espidf embedded/generated
+        Then enable this setting. Generated files are deliberately excluded
+        until a project DBC is available.
+
+endmenu
