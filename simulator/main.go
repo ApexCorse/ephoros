@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -19,6 +20,26 @@ import (
 )
 
 func main() {
+	dbcFilePath := flag.String("dbc-file", os.Getenv("DBC_FILE_PATH"), "path to the DBC file")
+	catalogOutput := flag.String("catalog-output", "", "write a C topic catalog to this file and exit")
+	flag.Parse()
+
+	if *dbcFilePath == "" {
+		log.Fatalln("[SIMULATOR_MAIN] DBC_FILE_PATH or --dbc-file is required")
+	}
+
+	config, err := getDbcConfig(*dbcFilePath)
+	if err != nil {
+		log.Fatalf("[SIMULATOR_MAIN] couldn't load DBC config: %s\n", err.Error())
+	}
+
+	if *catalogOutput != "" {
+		if err := writeTopicCatalog(*catalogOutput, getTopicsFromConfig(config)); err != nil {
+			log.Fatalf("[SIMULATOR_MAIN] couldn't write topic catalog: %s\n", err.Error())
+		}
+		return
+	}
+
 	brokerUrl := os.Getenv("BROKER_URL")
 	if brokerUrl == "" {
 		log.Fatalln("[SIMULATOR_MAIN] missing env variables")
@@ -40,13 +61,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	config, err := getDbcConfig()
-	if err != nil {
-		log.Fatalf("[SIMULATOR_MAIN] couldn't load DBC config: %s\n", err.Error())
-		os.Exit(1)
-	}
-
 	topics := getTopicsFromConfig(config)
+	if len(topics) == 0 {
+		log.Fatalln("[SIMULATOR_MAIN] DBC config contains no MQTT topics")
+	}
 	log.Printf("[SIMULATOR_MAIN] got %d topics: %v\n", len(topics), topics)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -81,16 +99,17 @@ func main() {
 				log.Fatalf("[SIMULATOR_MAIN] couldn't generate data: %s\n", err.Error())
 				os.Exit(1)
 			}
-			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
+			publishCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 
 			i := rand.Intn(len(topics))
 			topic := topics[i]
 
-			if err := client.Publish(ctx, topic, data); err != nil {
+			if err := client.Publish(publishCtx, topic, data); err != nil {
+				cancel()
 				log.Fatalf("[SIMULATOR_MAIN] couldn't send data: %s\n", err.Error())
 				os.Exit(1)
 			}
+			cancel()
 			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", topic)
 		}
 
@@ -120,12 +139,7 @@ func generateRandomData() ([]byte, error) {
 }
 
 // getDbcConfig reads and parses the config.dbc file
-func getDbcConfig() (*vera.Config, error) {
-	dbcFilePath := os.Getenv("DBC_FILE_PATH")
-	if dbcFilePath == "" {
-		return nil, fmt.Errorf("DBC_FILE_PATH env var is not set")
-	}
-
+func getDbcConfig(dbcFilePath string) (*vera.Config, error) {
 	dbcFile, err := os.Open(dbcFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("error while opening DBC file: %w", err)
@@ -138,6 +152,38 @@ func getDbcConfig() (*vera.Config, error) {
 	}
 
 	return config, nil
+}
+
+// writeTopicCatalog exports the same DBC topic set used by the MQTT simulator
+// as a C header consumable by the embedded telemetry simulator.
+func writeTopicCatalog(outputPath string, topics []string) error {
+	if len(topics) == 0 {
+		return fmt.Errorf("DBC config contains no MQTT topics")
+	}
+
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if _, err = fmt.Fprintln(file, "// Code generated from config.dbc; DO NOT EDIT.\n#pragma once\n"); err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintf(file, "#define EPHOROS_TELEMETRY_SIMULATOR_TOPIC_COUNT %d\n\n", len(topics)); err != nil {
+		return err
+	}
+	if _, err = fmt.Fprintln(file, "static const char * const ephoros_telemetry_simulator_topics[] = {"); err != nil {
+		return err
+	}
+	for _, topic := range topics {
+		// %q produces a valid quoted Go string, whose escaping is also valid C.
+		if _, err = fmt.Fprintf(file, "\t%q,\n", topic); err != nil {
+			return err
+		}
+	}
+	_, err = fmt.Fprintln(file, "};")
+	return err
 }
 
 // getTopicsFromConfig extracts MQTT topics from the vera config
