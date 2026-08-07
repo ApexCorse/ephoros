@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "can.h"
 #include "esp_err.h"
 
 /**
@@ -68,4 +69,10 @@ esp_err_t influxdb_write_number(
 	const char *field_key,
 	double value,
 	int64_t timestamp_ns
+);
+
+/** Write a decoded or simulated CAN signal, preserving its DBC MQTT topic. */
+esp_err_t influxdb_write_can_signal(
+	const influxdb_client_t *client,
+	const can_decoded_signal_t *signal
 );

@@ -48,8 +48,7 @@ static void influxdb_task(void *arg) {
 		}
 
 		/* TWAI timestamps are not Unix timestamps, so let InfluxDB assign it. */
-		esp_err_t err = influxdb_write_number(client, "can_signal", "name",
-								signal.name, "value", signal.value, 0);
+		esp_err_t err = influxdb_write_can_signal(client, &signal);
 		if (err != ESP_OK) {
 			ESP_LOGW(TAG, "failed to write CAN signal %s: %s", signal.name,
 					 esp_err_to_name(err));
@@ -168,6 +167,57 @@ esp_err_t influxdb_write_number(
 			measurement, tag_key, tag_value, field_key, value, timestamp_ns);
 	}
 
+	if (written < 0 || written >= (int)sizeof(line_protocol)) {
+		return ESP_ERR_INVALID_SIZE;
+	}
+
+	return influxdb_write_line(client, line_protocol);
+}
+
+static bool escape_tag_value(char *destination, size_t destination_size,
+					 const char *value) {
+	if (destination == NULL || destination_size == 0 || value == NULL) {
+		return false;
+	}
+
+	size_t written = 0;
+	for (const char *current = value; *current != '\0'; ++current) {
+		if (*current == ',' || *current == '=' || *current == ' ') {
+			if (written + 1 >= destination_size) {
+				return false;
+			}
+			destination[written++] = '\\';
+		}
+		if (written + 1 >= destination_size) {
+			return false;
+		}
+		destination[written++] = *current;
+	}
+	destination[written] = '\0';
+	return true;
+}
+
+esp_err_t influxdb_write_can_signal(
+	const influxdb_client_t *client,
+	const can_decoded_signal_t *signal
+) {
+	if (signal == NULL || !isfinite(signal->value)) {
+		return ESP_ERR_INVALID_ARG;
+	}
+
+	char topic[CAN_DECODED_SIGNAL_TOPIC_MAX_LEN * 2];
+	char name[CAN_DECODED_SIGNAL_NAME_MAX_LEN * 2];
+	char unit[CAN_DECODED_SIGNAL_UNIT_MAX_LEN * 2];
+	if (!escape_tag_value(topic, sizeof(topic), signal->topic) ||
+		!escape_tag_value(name, sizeof(name), signal->name) ||
+		!escape_tag_value(unit, sizeof(unit), signal->unit)) {
+		return ESP_ERR_INVALID_SIZE;
+	}
+
+	char line_protocol[INFLUXDB_LINE_BUFFER_SIZE];
+	int written = snprintf(line_protocol, sizeof(line_protocol),
+		"can_signal,topic=%s,name=%s,unit=%s value=%.17g", topic, name, unit,
+		signal->value);
 	if (written < 0 || written >= (int)sizeof(line_protocol)) {
 		return ESP_ERR_INVALID_SIZE;
 	}
