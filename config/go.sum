@@ -1,5 +1,5 @@
-github.com/ApexCorse/vera v0.0.0-20251030092832-2a4b5b476f0d h1:DtLm7MoKpy6MKmuSngODcMUDK3y/kVLemuwWnpGD5OU=
-github.com/ApexCorse/vera v0.0.0-20251030092832-2a4b5b476f0d/go.mod h1:WGkLG8x6U4B3Fhnr4k3at0Ebam6qHBbUR9x57L6SBv8=
+github.com/ApexCorse/vera v0.13.0 h1:HbPcwrwgoAvNh0iH4s/St2wL1/pBYh/RjH8FGcp1Heg=
+github.com/ApexCorse/vera v0.13.0/go.mod h1:WGkLG8x6U4B3Fhnr4k3at0Ebam6qHBbUR9x57L6SBv8=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/grafana/grafana-foundation-sdk/go v0.0.0-20251008104357-2e5c9f991a96 h1:dWUMXBaBDpiLYDWlxHQIFySY/+r3ekjupiqEPVWvTWE=
