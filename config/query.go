@@ -2,10 +2,86 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
 	"github.com/grafana/grafana-foundation-sdk/go/cog/variants"
 )
+
+const influxDBQueryTemplate = `from(bucket: %q)
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r["_measurement"] == "can_signal")
+  |> filter(fn: (r) => r["_field"] == "value")
+  |> filter(fn: (r) => r["name"] == %q)
+  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
+  |> yield(name: "mean")`
+
+type InfluxDBQuery struct {
+	RefId        string `json:"refId"`
+	Hide         *bool  `json:"hide,omitempty"`
+	Query        string `json:"query"`
+	RawQuery     bool   `json:"rawQuery"`
+	ResultFormat string `json:"resultFormat"`
+}
+
+func (resource InfluxDBQuery) Equals(otherCandidate variants.Dataquery) bool {
+	other, ok := otherCandidate.(InfluxDBQuery)
+	return ok && resource.RefId == other.RefId && resource.Query == other.Query &&
+		resource.RawQuery == other.RawQuery && resource.ResultFormat == other.ResultFormat
+}
+
+func (resource InfluxDBQuery) Validate() error             { return nil }
+func (resource InfluxDBQuery) ImplementsDataqueryVariant() {}
+func (resource InfluxDBQuery) DataqueryType() string       { return "influxdb" }
+
+func InfluxDBQueryVariantConfig() variants.DataqueryConfig {
+	return variants.DataqueryConfig{
+		Identifier: "influxdb",
+		DataqueryUnmarshaler: func(raw []byte) (variants.Dataquery, error) {
+			dataquery := &InfluxDBQuery{}
+			if err := json.Unmarshal(raw, dataquery); err != nil {
+				return nil, err
+			}
+			return dataquery, nil
+		},
+	}
+}
+
+var _ cog.Builder[variants.Dataquery] = (*InfluxDBQueryBuilder)(nil)
+
+type InfluxDBQueryBuilder struct{ internal *InfluxDBQuery }
+
+func NewInfluxDBQueryBuilder(signal string) *InfluxDBQueryBuilder {
+	return &InfluxDBQueryBuilder{internal: &InfluxDBQuery{
+		Query:    fmt.Sprintf(influxDBQueryTemplate, influxDBBucket(), signal),
+		RawQuery: true, ResultFormat: "time_series",
+	}}
+}
+
+func influxDBBucket() string {
+	if bucket := os.Getenv("INFLUXDB_INIT_BUCKET"); bucket != "" {
+		return bucket
+	}
+	return "telemetry"
+}
+
+func (builder *InfluxDBQueryBuilder) Build() (variants.Dataquery, error) {
+	if err := builder.internal.Validate(); err != nil {
+		return InfluxDBQuery{}, err
+	}
+	return *builder.internal, nil
+}
+
+func (builder *InfluxDBQueryBuilder) RefId(refId string) *InfluxDBQueryBuilder {
+	builder.internal.RefId = refId
+	return builder
+}
+
+func (builder *InfluxDBQueryBuilder) Hide(hide bool) *InfluxDBQueryBuilder {
+	builder.internal.Hide = &hide
+	return builder
+}
 
 type MQTTQuery struct {
 	RefId string `json:"refId"`

@@ -34,9 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	topics := getTopicsFromConfig(config)
-
-	dashboards, err := createDashboardsWithMQTTTopics(topics)
+	dashboards, err := createDashboardsWithSignalTopics(config.Topics)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -69,21 +67,13 @@ func main() {
 	}
 }
 
-func getTopicsFromConfig(config *vera.Config) []string {
-	topics := make([]string, len(config.Topics))
-	for i := range config.Topics {
-		topics[i] = config.Topics[i].Topic
-	}
-
-	return topics
-}
-
 func preconfigGrafana() {
 	// Required to correctly unmarshal panels and dataqueries
 	plugins.RegisterDefaultPlugins()
 
 	// This lets cog know about the newly created query type and how to unmarshal it.
 	cog.NewRuntime().RegisterDataqueryVariant(MQTTQueryVariantConfig())
+	cog.NewRuntime().RegisterDataqueryVariant(InfluxDBQueryVariantConfig())
 }
 
 func getDbcConfig() (*vera.Config, error) {
