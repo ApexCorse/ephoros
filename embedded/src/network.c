@@ -5,6 +5,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "nvs_flash.h"
 #include "sdkconfig.h"
 
 #if CONFIG_EPHOROS_NETWORK_CELLULAR
@@ -173,7 +174,17 @@ static esp_err_t start_wifi(void) {
 #endif
 
 esp_err_t network_start(void) {
-	esp_err_t err = esp_netif_init();
+	esp_err_t err = nvs_flash_init();
+	if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+		err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+		ESP_RETURN_ON_ERROR(nvs_flash_erase(), TAG, "erase incompatible NVS");
+		err = nvs_flash_init();
+	}
+	if (err != ESP_OK) {
+		return err;
+	}
+
+	err = esp_netif_init();
 	if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
 		return err;
 	}

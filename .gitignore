@@ -6,3 +6,4 @@
 
 grafana/provisioning/dashboards/
 config.dbc
+embedded/src/telemetry_catalog.h

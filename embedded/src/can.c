@@ -4,12 +4,18 @@
 
 #include "can.h"
 #include "esp_log.h"
+#include "sdkconfig.h"
+#if CONFIG_EPHOROS_CAN_ENABLED
 #include "esp_twai.h"
 #include "esp_twai_onchip.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
-#include "sdkconfig.h"
+#endif
+
+#if CONFIG_EPHOROS_CAN_SIMULATOR
+#include "telemetry_simulator.h"
+#endif
 
 #if CONFIG_EPHOROS_CAN_VERA_DECODER
 #include "vera_espidf.h"
@@ -17,6 +23,7 @@
 
 static const char *TAG = "can";
 
+#if CONFIG_EPHOROS_CAN_ENABLED
 typedef struct {
 	twai_frame_header_t header;
 	uint8_t data[TWAI_FRAME_MAX_LEN];
@@ -100,8 +107,15 @@ static void can_receive_task(void *arg) {
 		}
 	}
 }
+#endif
 
 esp_err_t can_start(void) {
+#if CONFIG_EPHOROS_CAN_SIMULATOR
+	return telemetry_simulator_start();
+#elif !CONFIG_EPHOROS_CAN_ENABLED
+	ESP_LOGI(TAG, "CAN receiver disabled");
+	return ESP_OK;
+#else
 	if (s_rx_queue != NULL) {
 		return ESP_ERR_INVALID_STATE;
 	}
@@ -179,13 +193,22 @@ esp_err_t can_start(void) {
 			 CONFIG_EPHOROS_CAN_BITRATE, CONFIG_EPHOROS_CAN_RX_GPIO,
 			 CONFIG_EPHOROS_CAN_LISTEN_ONLY ? " (listen-only)" : "");
 	return ESP_OK;
+#endif
 }
 
 bool can_receive_decoded_signal(can_decoded_signal_t *signal,
 							 TickType_t timeout) {
+#if CONFIG_EPHOROS_CAN_SIMULATOR
+	return telemetry_simulator_next(signal, timeout);
+#elif !CONFIG_EPHOROS_CAN_ENABLED
+	(void)signal;
+	(void)timeout;
+	return false;
+#else
 	if (signal == NULL || s_decoded_queue == NULL) {
 		return false;
 	}
 
 	return xQueueReceive(s_decoded_queue, signal, timeout) == pdTRUE;
+#endif
 }

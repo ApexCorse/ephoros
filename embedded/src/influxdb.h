@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "can.h"
 #include "esp_err.h"
 
 /**
