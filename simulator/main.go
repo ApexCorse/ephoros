@@ -26,7 +26,7 @@ func main() {
 	}
 
 	intervalStr := os.Getenv("SIMULATOR_INTERVAL")
-	interval := 1000
+	interval := 200
 	if intervalStr != "" {
 		newInterval, err := strconv.Atoi(intervalStr)
 		if err == nil {
@@ -71,6 +71,12 @@ func main() {
 	}
 	log.Println("[SIMULATOR_MAIN] MQTT simulator started")
 
+	influxWriter, err := NewInfluxWriterFromEnvironment()
+	if err != nil {
+		log.Fatalf("[SIMULATOR_MAIN] couldn't create InfluxDB writer: %s\n", err.Error())
+	}
+	log.Println("[SIMULATOR_MAIN] InfluxDB writer started")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -79,18 +85,21 @@ func main() {
 			data, err := generateRandomData()
 			if err != nil {
 				log.Fatalf("[SIMULATOR_MAIN] couldn't generate data: %s\n", err.Error())
-				os.Exit(1)
 			}
-			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-			defer cancel()
 
 			i := rand.Intn(len(topics))
 			topic := topics[i]
+			writeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 
-			if err := client.Publish(ctx, topic, data); err != nil {
+			if err := client.Publish(writeCtx, topic, data); err != nil {
+				cancel()
 				log.Fatalf("[SIMULATOR_MAIN] couldn't send data: %s\n", err.Error())
-				os.Exit(1)
 			}
+			if err := influxWriter.Write(writeCtx, topic, data); err != nil {
+				cancel()
+				log.Fatalf("[SIMULATOR_MAIN] couldn't write data to InfluxDB: %s\n", err.Error())
+			}
+			cancel()
 			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", topic)
 		}
 
