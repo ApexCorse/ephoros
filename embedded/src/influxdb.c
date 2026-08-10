@@ -48,8 +48,8 @@ static void influxdb_task(void *arg) {
 		}
 
 		/* TWAI timestamps are not Unix timestamps, so let InfluxDB assign it. */
-		esp_err_t err = influxdb_write_number(client, "can_signal", "name",
-								signal.name, "value", signal.value, 0);
+		esp_err_t err = influxdb_write_number(client, "can_signal", "topic",
+								signal.topic, "value", signal.value, 0);
 		if (err != ESP_OK) {
 			ESP_LOGW(TAG, "failed to write CAN signal %s: %s", signal.name,
 					 esp_err_to_name(err));

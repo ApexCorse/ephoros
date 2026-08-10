@@ -13,7 +13,7 @@ const influxDBQueryTemplate = `from(bucket: %q)
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r["_measurement"] == "can_signal")
   |> filter(fn: (r) => r["_field"] == "value")
-  |> filter(fn: (r) => r["name"] == %q)
+  |> filter(fn: (r) => r["topic"] == %q)
   |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)
   |> yield(name: "mean")`
 
@@ -52,9 +52,9 @@ var _ cog.Builder[variants.Dataquery] = (*InfluxDBQueryBuilder)(nil)
 
 type InfluxDBQueryBuilder struct{ internal *InfluxDBQuery }
 
-func NewInfluxDBQueryBuilder(signal string) *InfluxDBQueryBuilder {
+func NewInfluxDBQueryBuilder(topic string) *InfluxDBQueryBuilder {
 	return &InfluxDBQueryBuilder{internal: &InfluxDBQuery{
-		Query:    fmt.Sprintf(influxDBQueryTemplate, influxDBBucket(), signal),
+		Query:    fmt.Sprintf(influxDBQueryTemplate, influxDBBucket(), topic),
 		RawQuery: true, ResultFormat: "time_series",
 	}}
 }

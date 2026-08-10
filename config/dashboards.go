@@ -95,7 +95,7 @@ func buildDashboardForLevel(firstLevel string, secondLevels map[string][]vera.Si
 				timeseries.NewPanelBuilder().
 					Title(signalTopic.Topic + " (history)").
 					Datasource(influxDBDataSourceRef).
-					WithTarget(NewInfluxDBQueryBuilder(signalTopic.Signal)),
+					WithTarget(NewInfluxDBQueryBuilder(signalTopic.Topic)),
 			)
 		}
 

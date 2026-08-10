@@ -27,7 +27,7 @@ func TestBuildDashboardForLevelPairsLiveAndHistoricalPanels(t *testing.T) {
 		"grafana-mqtt-datasource",
 		`"graphMode":"none"`,
 		"influxdb-datasource",
-		`r[\"name\"] == \"EngineSpeed\"`,
+		`r[\"topic\"] == \"data/powertrain/engine-speed\"`,
 	} {
 		if !strings.Contains(json, expected) {
 			t.Errorf("generated dashboard does not contain %q", expected)
@@ -35,8 +35,8 @@ func TestBuildDashboardForLevelPairsLiveAndHistoricalPanels(t *testing.T) {
 	}
 }
 
-func TestInfluxDBQueryUsesSignalName(t *testing.T) {
-	query, err := NewInfluxDBQueryBuilder("BatteryVoltage").Build()
+func TestInfluxDBQueryUsesMQTTTopic(t *testing.T) {
+	query, err := NewInfluxDBQueryBuilder("data/electrical/battery-voltage").Build()
 	if err != nil {
 		t.Fatalf("build query: %v", err)
 	}
@@ -45,7 +45,7 @@ func TestInfluxDBQueryUsesSignalName(t *testing.T) {
 	if !ok {
 		t.Fatalf("query type = %T, want InfluxDBQuery", query)
 	}
-	if !strings.Contains(influxQuery.Query, `r["name"] == "BatteryVoltage"`) {
-		t.Errorf("query does not filter by the signal name: %s", influxQuery.Query)
+	if !strings.Contains(influxQuery.Query, `r["topic"] == "data/electrical/battery-voltage"`) {
+		t.Errorf("query does not filter by the MQTT topic: %s", influxQuery.Query)
 	}
 }
