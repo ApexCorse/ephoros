@@ -1,0 +1,90 @@
+name: ephoros-server
+
+services:
+  config:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: config
+    volumes:
+      - ./:/opt
+    environment:
+      - DBC_FILE_PATH=/opt/config.dbc
+      - DASHBOARDS_PATH=/opt/grafana/provisioning/dashboards/
+      - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
+  broker:
+    image: emqx/emqx-enterprise:5.10.0
+    hostname: docker.emqx.com
+    networks:
+      default:
+        aliases:
+          - broker
+    environment:
+      - "EMQX_NODE_NAME=emqx@docker.emqx.com"
+      - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
+      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@docker.emqx.com]"
+      - "EMQX_HOST=docker.emqx.com"
+    ports:
+      - 18083:18083
+      - 1883:1883
+    healthcheck:
+      test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  influxdb:
+    image: influxdb:2.7
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_INIT_USERNAME:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_INIT_PASSWORD:-ephoros-dev-password}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG:-ephoros}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
+    ports:
+      - 8086:8086
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+  client:
+    image: grafana/grafana
+    environment:
+      - GF_PLUGINS_PREINSTALL=grafana-mqtt-datasource
+      - GF_DASHBOARDS_MIN_REFRESH_INTERVAL=1s
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
+      - INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG:-ephoros}
+      - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    networks:
+      - default
+    ports:
+      - 3000:3000
+    depends_on:
+      broker:
+        condition: service_healthy
+      config:
+        condition: service_completed_successfully
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  influxdb-data:
+  influxdb-config:

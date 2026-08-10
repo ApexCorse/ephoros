@@ -1,0 +1,17 @@
+apiVersion: 1
+
+prune: true
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    uid: influxdb-datasource
+    url: http://influxdb:8086
+    access: proxy
+    jsonData:
+      version: Flux
+      organization: $INFLUXDB_INIT_ORG
+      defaultBucket: $INFLUXDB_INIT_BUCKET
+      tlsSkipVerify: true
+    secureJsonData:
+      token: $INFLUXDB_TOKEN

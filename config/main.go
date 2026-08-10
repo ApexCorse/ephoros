@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ApexCorse/vera"
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
@@ -34,9 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	topics := getTopicsFromConfig(config)
-
-	dashboards, err := createDashboardsWithMQTTTopics(topics)
+	dashboards, err := createDashboardsWithSignalTopics(config.Topics)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -69,21 +68,13 @@ func main() {
 	}
 }
 
-func getTopicsFromConfig(config *vera.Config) []string {
-	topics := make([]string, len(config.Topics))
-	for i := range config.Topics {
-		topics[i] = config.Topics[i].Topic
-	}
-
-	return topics
-}
-
 func preconfigGrafana() {
 	// Required to correctly unmarshal panels and dataqueries
 	plugins.RegisterDefaultPlugins()
 
 	// This lets cog know about the newly created query type and how to unmarshal it.
 	cog.NewRuntime().RegisterDataqueryVariant(MQTTQueryVariantConfig())
+	cog.NewRuntime().RegisterDataqueryVariant(InfluxDBQueryVariantConfig())
 }
 
 func getDbcConfig() (*vera.Config, error) {
@@ -93,6 +84,10 @@ func getDbcConfig() (*vera.Config, error) {
 	}
 
 	dbcFile, err := os.Open(dbcFilePath)
+	if os.IsNotExist(err) && filepath.Base(dbcFilePath) == "config.dbc" {
+		dbcFilePath = filepath.Join(filepath.Dir(dbcFilePath), "config.example.dbc")
+		dbcFile, err = os.Open(dbcFilePath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error while opening DBC file: %w\n", err)
 	}

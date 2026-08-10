@@ -1,0 +1,33 @@
+name: ephoros-server-dev
+
+services:
+  simulator:
+    build:
+      dockerfile: Dockerfile
+      context: .
+      args:
+        SERVICE: simulator
+    environment:
+      - DBC_FILE_PATH=/opt/config.dbc
+      - SIMULATOR_INTERVAL=200
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
+      - INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG:-ephoros}
+      - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
+    networks:
+      - default
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    depends_on:
+      broker:
+        condition: service_healthy
+      influxdb:
+        condition: service_healthy
+    volumes:
+      - ./:/opt
+
+networks:
+  default:
+    driver: bridge

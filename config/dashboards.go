@@ -5,9 +5,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ApexCorse/vera"
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
+	"github.com/grafana/grafana-foundation-sdk/go/common"
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
 	"github.com/grafana/grafana-foundation-sdk/go/stat"
+	"github.com/grafana/grafana-foundation-sdk/go/timeseries"
 )
 
 const (
@@ -30,14 +33,19 @@ var (
 		Uid:  cog.ToPtr("mqtt-datasource"),
 		Type: cog.ToPtr("grafana-mqtt-datasource"),
 	}
+	influxDBDataSourceRef = dashboard.DataSourceRef{
+		Uid:  cog.ToPtr("influxdb-datasource"),
+		Type: cog.ToPtr("influxdb"),
+	}
 )
 
-// parseTopicHierarchy parses a list of MQTT topics into a hierarchical structure.
-// Topics are expected to follow the pattern: data/firstLevel/secondLevel
-func parseTopicHierarchy(topics []string) (map[string]map[string][]string, error) {
-	topicsMap := make(map[string]map[string][]string)
+// parseSignalTopicHierarchy groups DBC signal topics by their first two topic levels.
+// Topics are expected to follow the pattern: data/firstLevel/secondLevel.
+func parseSignalTopicHierarchy(signalTopics []vera.SignalTopic) (map[string]map[string][]vera.SignalTopic, error) {
+	topicsMap := make(map[string]map[string][]vera.SignalTopic)
 
-	for _, topic := range topics {
+	for _, signalTopic := range signalTopics {
+		topic := signalTopic.Topic
 		if !strings.HasPrefix(topic, topicPrefix) {
 			return nil, fmt.Errorf("each topic must start with '%s': %s", topicPrefix, topic)
 		}
@@ -57,31 +65,37 @@ func parseTopicHierarchy(topics []string) (map[string]map[string][]string, error
 		}
 
 		if _, exists := topicsMap[firstLevel]; !exists {
-			topicsMap[firstLevel] = make(map[string][]string)
+			topicsMap[firstLevel] = make(map[string][]vera.SignalTopic)
 		}
 
-		topicsMap[firstLevel][secondLevel] = append(topicsMap[firstLevel][secondLevel], topic)
+		topicsMap[firstLevel][secondLevel] = append(topicsMap[firstLevel][secondLevel], signalTopic)
 	}
 
 	return topicsMap, nil
 }
 
-// buildDashboardForLevel creates a dashboard for a given first-level topic hierarchy.
-func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string) (dashboard.Dashboard, error) {
+// buildDashboardForLevel creates live MQTT and historical InfluxDB panels for every signal.
+func buildDashboardForLevel(firstLevel string, secondLevels map[string][]vera.SignalTopic) (dashboard.Dashboard, error) {
 	dashboardBuilder := dashboard.NewDashboardBuilder(firstLevel).
 		Uid(fmt.Sprintf("generated-%s", firstLevel)).
 		Refresh("1m").
 		Time("now-1m", "now")
 
-	for secondLevel, topics := range secondLevels {
+	for secondLevel, signalTopics := range secondLevels {
 		row := dashboard.NewRowBuilder(secondLevel)
 
-		for _, topic := range topics {
+		for _, signalTopic := range signalTopics {
 			row = row.WithPanel(
 				stat.NewPanelBuilder().
-					Title(topic).
+					Title(signalTopic.Topic + " (live)").
+					GraphMode(common.BigValueGraphModeNone).
 					Datasource(dataSourceRef).
-					WithTarget(NewMQTTQueryBuilder(topic)),
+					WithTarget(NewMQTTQueryBuilder(signalTopic.Topic)),
+			).WithPanel(
+				timeseries.NewPanelBuilder().
+					Title(signalTopic.Topic + " (history)").
+					Datasource(influxDBDataSourceRef).
+					WithTarget(NewInfluxDBQueryBuilder(signalTopic.Topic)),
 			)
 		}
 
@@ -91,9 +105,9 @@ func buildDashboardForLevel(firstLevel string, secondLevels map[string][]string)
 	return dashboardBuilder.Build()
 }
 
-// createDashboardsWithMQTTTopics generates Grafana dashboards from a list of MQTT topics.
-func createDashboardsWithMQTTTopics(topics []string) (map[string]dashboard.Dashboard, error) {
-	topicsMap, err := parseTopicHierarchy(topics)
+// createDashboardsWithSignalTopics generates Grafana dashboards from DBC signal-topic mappings.
+func createDashboardsWithSignalTopics(signalTopics []vera.SignalTopic) (map[string]dashboard.Dashboard, error) {
+	topicsMap, err := parseSignalTopicHierarchy(signalTopics)
 	if err != nil {
 		return nil, err
 	}

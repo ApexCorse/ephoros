@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	intervalStr := os.Getenv("SIMULATOR_INTERVAL")
-	interval := 1000
+	interval := 200
 	if intervalStr != "" {
 		newInterval, err := strconv.Atoi(intervalStr)
 		if err == nil {
@@ -89,6 +90,12 @@ func main() {
 	}
 	log.Println("[SIMULATOR_MAIN] MQTT simulator started")
 
+	influxWriter, err := NewInfluxWriterFromEnvironment()
+	if err != nil {
+		log.Fatalf("[SIMULATOR_MAIN] couldn't create InfluxDB writer: %s\n", err.Error())
+	}
+	log.Println("[SIMULATOR_MAIN] InfluxDB writer started")
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -97,17 +104,19 @@ func main() {
 			data, err := generateRandomData()
 			if err != nil {
 				log.Fatalf("[SIMULATOR_MAIN] couldn't generate data: %s\n", err.Error())
-				os.Exit(1)
 			}
-			publishCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 
 			i := rand.Intn(len(topics))
 			topic := topics[i]
+			writeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 
-			if err := client.Publish(publishCtx, topic, data); err != nil {
+			if err := client.Publish(writeCtx, topic, data); err != nil {
 				cancel()
 				log.Fatalf("[SIMULATOR_MAIN] couldn't send data: %s\n", err.Error())
-				os.Exit(1)
+			}
+			if err := influxWriter.Write(writeCtx, topic, data); err != nil {
+				cancel()
+				log.Fatalf("[SIMULATOR_MAIN] couldn't write data to InfluxDB: %s\n", err.Error())
 			}
 			cancel()
 			log.Printf("[SIMULATOR_MAIN] sent data to topic: %s\n", topic)
@@ -141,6 +150,10 @@ func generateRandomData() ([]byte, error) {
 // getDbcConfig reads and parses the config.dbc file
 func getDbcConfig(dbcFilePath string) (*vera.Config, error) {
 	dbcFile, err := os.Open(dbcFilePath)
+	if os.IsNotExist(err) && filepath.Base(dbcFilePath) == "config.dbc" {
+		dbcFilePath = filepath.Join(filepath.Dir(dbcFilePath), "config.example.dbc")
+		dbcFile, err = os.Open(dbcFilePath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error while opening DBC file: %w", err)
 	}
@@ -167,7 +180,7 @@ func writeTopicCatalog(outputPath string, topics []string) error {
 	}
 	defer file.Close()
 
-	if _, err = fmt.Fprintln(file, "// Code generated from config.dbc; DO NOT EDIT.\n#pragma once\n"); err != nil {
+	if _, err = fmt.Fprint(file, "// Code generated from config.dbc; DO NOT EDIT.\n#pragma once\n\n"); err != nil {
 		return err
 	}
 	if _, err = fmt.Fprintf(file, "#define EPHOROS_TELEMETRY_SIMULATOR_TOPIC_COUNT %d\n\n", len(topics)); err != nil {
