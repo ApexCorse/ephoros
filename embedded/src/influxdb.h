@@ -70,9 +70,3 @@ esp_err_t influxdb_write_number(
 	double value,
 	int64_t timestamp_ns
 );
-
-/** Write a decoded or simulated CAN signal, preserving its DBC MQTT topic. */
-esp_err_t influxdb_write_can_signal(
-	const influxdb_client_t *client,
-	const can_decoded_signal_t *signal
-);
