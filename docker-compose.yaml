@@ -3,12 +3,12 @@ name: ephoros-server
 services:
   config:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: .
+      dockerfile: Dockerfile
       args:
         SERVICE: config
     volumes:
-      - ../:/opt
+      - ./:/opt
     environment:
       - DBC_FILE_PATH=/opt/config.dbc
       - DASHBOARDS_PATH=/opt/grafana/provisioning/dashboards/
@@ -62,7 +62,10 @@ services:
       - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
       - INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG:-ephoros}
       - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
-    env_file: ../.env
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
     networks:
       - default
     ports:
@@ -75,8 +78,8 @@ services:
       influxdb:
         condition: service_healthy
     volumes:
-      - ../grafana/provisioning:/etc/grafana/provisioning
-      - ../grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
 
 networks:
   default:

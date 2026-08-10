@@ -3,20 +3,23 @@ name: ephoros-server-dev
 services:
   simulator:
     build:
-      dockerfile: docker/Dockerfile
-      context: ..
+      dockerfile: Dockerfile
+      context: .
       args:
         SERVICE: simulator
     environment:
       - DBC_FILE_PATH=/opt/config.dbc
     networks:
       - default
-    env_file: ../.env
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
     depends_on:
       broker:
         condition: service_healthy
     volumes:
-      - ../:/opt
+      - ./:/opt
 
 networks:
   default:
