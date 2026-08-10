@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -136,6 +137,10 @@ func getDbcConfig() (*vera.Config, error) {
 	}
 
 	dbcFile, err := os.Open(dbcFilePath)
+	if os.IsNotExist(err) && filepath.Base(dbcFilePath) == "config.dbc" {
+		dbcFilePath = filepath.Join(filepath.Dir(dbcFilePath), "config.example.dbc")
+		dbcFile, err = os.Open(dbcFilePath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error while opening DBC file: %w", err)
 	}

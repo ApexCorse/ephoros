@@ -3,8 +3,8 @@ name: ephoros-server-dev
 services:
   simulator:
     build:
-      dockerfile: docker/Dockerfile
-      context: ..
+      dockerfile: Dockerfile
+      context: .
       args:
         SERVICE: simulator
     environment:
@@ -16,14 +16,17 @@ services:
       - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
     networks:
       - default
-    env_file: ../.env
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
     depends_on:
       broker:
         condition: service_healthy
       influxdb:
         condition: service_healthy
     volumes:
-      - ../:/opt
+      - ./:/opt
 
 networks:
   default:
