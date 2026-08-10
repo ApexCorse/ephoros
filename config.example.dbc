@@ -1,0 +1,34 @@
+VERSION "Ephoros example telemetry"
+
+NS_ :
+
+BS_:
+
+BU_: ECU DASH
+
+BO_ 256 Powertrain: 8 ECU
+    SG_ EngineSpeed : 0|16@1+ (0.25,0) [0|16000] "rpm" DASH
+    SG_ ThrottlePosition : 16|8@1+ (0.4,0) [0|100] "%" DASH
+    SG_ CoolantTemperature : 24|8@1+ (1,-40) [-40|215] "degC" DASH
+    SG_ OilPressure : 32|12@1+ (0.1,0) [0|400] "kPa" DASH
+
+BO_ 257 Battery: 8 ECU
+    SG_ BatteryVoltage : 0|16@1+ (0.01,0) [0|65.535] "V" DASH
+    SG_ BatteryCurrent : 16|16@1- (0.1,0) [-3200|3200] "A" DASH
+    SG_ BatteryTemperature : 32|8@1+ (1,-40) [-40|215] "degC" DASH
+
+BO_ 258 VehicleDynamics: 8 ECU
+    SG_ VehicleSpeed : 0|16@1+ (0.01,0) [0|655.35] "km/h" DASH
+    SG_ SteeringAngle : 16|16@1- (0.1,0) [-3276.8|3276.7] "deg" DASH
+    SG_ BrakePressure : 32|12@1+ (0.1,0) [0|400] "bar" DASH
+
+CM_ SG_ 256 EngineSpeed "vera:mqtt-topic=vehicle/engine/speed";
+CM_ SG_ 256 ThrottlePosition "vera:mqtt-topic=vehicle/engine/throttle";
+CM_ SG_ 256 CoolantTemperature "vera:mqtt-topic=vehicle/engine/coolant";
+CM_ SG_ 256 OilPressure "vera:mqtt-topic=vehicle/engine/oil-pressure";
+CM_ SG_ 257 BatteryVoltage "vera:mqtt-topic=vehicle/battery/voltage";
+CM_ SG_ 257 BatteryCurrent "vera:mqtt-topic=vehicle/battery/current";
+CM_ SG_ 257 BatteryTemperature "vera:mqtt-topic=vehicle/battery/temperature";
+CM_ SG_ 258 VehicleSpeed "vera:mqtt-topic=vehicle/dynamics/speed";
+CM_ SG_ 258 SteeringAngle "vera:mqtt-topic=vehicle/dynamics/steering";
+CM_ SG_ 258 BrakePressure "vera:mqtt-topic=vehicle/dynamics/brake";

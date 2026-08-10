@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ApexCorse/vera"
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
@@ -83,6 +84,10 @@ func getDbcConfig() (*vera.Config, error) {
 	}
 
 	dbcFile, err := os.Open(dbcFilePath)
+	if os.IsNotExist(err) && filepath.Base(dbcFilePath) == "config.dbc" {
+		dbcFilePath = filepath.Join(filepath.Dir(dbcFilePath), "config.example.dbc")
+		dbcFile, err = os.Open(dbcFilePath)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("error while opening DBC file: %w\n", err)
 	}
