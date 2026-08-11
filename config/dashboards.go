@@ -49,11 +49,18 @@ var (
 type topicSection struct {
 	name    string
 	signals []topicSignal
+	modules []topicModule
 }
 
 type topicSignal struct {
-	label string
-	topic string
+	label       string
+	detailLabel string
+	topic       string
+}
+
+type topicModule struct {
+	name    string
+	signals []topicSignal
 }
 
 // SignalTopic is the topic mapping needed to generate dashboards. It stays
@@ -88,9 +95,15 @@ type alertListStateFilter struct {
 }
 
 // parseSignalTopicHierarchy groups topics into dashboard sections. A valid topic
-// has a section and signal path after the required data/ prefix.
+// has either a section and signal or a section, module, and signal after the
+// required data/ prefix.
 func parseSignalTopicHierarchy(signalTopics []SignalTopic) ([]topicSection, error) {
-	sectionsByName := make(map[string][]topicSignal)
+	type sectionContents struct {
+		signals       []topicSignal
+		modulesByName map[string][]topicSignal
+	}
+
+	sectionsByName := make(map[string]sectionContents)
 	seenTopics := make(map[string]struct{}, len(signalTopics))
 
 	for _, signalTopic := range signalTopics {
@@ -100,8 +113,8 @@ func parseSignalTopicHierarchy(signalTopics []SignalTopic) ([]topicSection, erro
 		}
 
 		parts := strings.Split(strings.TrimPrefix(topic, topicPrefix), "/")
-		if len(parts) < 2 {
-			return nil, fmt.Errorf("topic must have a section and signal after %q: %s", topicPrefix, topic)
+		if len(parts) != 2 && len(parts) != 3 {
+			return nil, fmt.Errorf("topic must have a section and signal, optionally preceded by one module, after %q: %s", topicPrefix, topic)
 		}
 		for _, part := range parts {
 			if part == "" {
@@ -114,25 +127,46 @@ func parseSignalTopicHierarchy(signalTopics []SignalTopic) ([]topicSection, erro
 		seenTopics[topic] = struct{}{}
 
 		section := parts[0]
-		sectionsByName[section] = append(sectionsByName[section], topicSignal{
-			label: humanizeTopicPath(parts[1:]),
-			topic: topic,
-		})
+		contents := sectionsByName[section]
+		signal := topicSignal{
+			label:       humanizeTopicSegment(parts[len(parts)-1]),
+			detailLabel: humanizeTopicPath(parts[1:]),
+			topic:       topic,
+		}
+		if len(parts) == 2 {
+			contents.signals = append(contents.signals, signal)
+		} else {
+			if contents.modulesByName == nil {
+				contents.modulesByName = make(map[string][]topicSignal)
+			}
+			contents.modulesByName[parts[1]] = append(contents.modulesByName[parts[1]], signal)
+		}
+		sectionsByName[section] = contents
 	}
 
 	sections := make([]topicSection, 0, len(sectionsByName))
-	for name, signals := range sectionsByName {
-		sort.Slice(signals, func(i, j int) bool {
-			if signals[i].label == signals[j].label {
-				return signals[i].topic < signals[j].topic
-			}
-			return signals[i].label < signals[j].label
-		})
-		sections = append(sections, topicSection{name: humanizeTopicSegment(name), signals: signals})
+	for name, contents := range sectionsByName {
+		sortTopicSignals(contents.signals)
+		var modules []topicModule
+		for moduleName, signals := range contents.modulesByName {
+			sortTopicSignals(signals)
+			modules = append(modules, topicModule{name: humanizeTopicSegment(moduleName), signals: signals})
+		}
+		sort.Slice(modules, func(i, j int) bool { return modules[i].name < modules[j].name })
+		sections = append(sections, topicSection{name: humanizeTopicSegment(name), signals: contents.signals, modules: modules})
 	}
 	sort.Slice(sections, func(i, j int) bool { return sections[i].name < sections[j].name })
 
 	return sections, nil
+}
+
+func sortTopicSignals(signals []topicSignal) {
+	sort.Slice(signals, func(i, j int) bool {
+		if signals[i].label == signals[j].label {
+			return signals[i].topic < signals[j].topic
+		}
+		return signals[i].label < signals[j].label
+	})
 }
 
 func humanizeTopicPath(parts []string) string {
@@ -233,36 +267,46 @@ func buildTelemetryDashboard(sections []topicSection) (dashboard.Dashboard, erro
 	for _, section := range sections {
 		builder = builder.WithRow(dashboard.NewRowBuilder(section.name).Collapsed(false))
 		for _, signal := range section.signals {
-			builder = builder.WithPanel(
-				stat.NewPanelBuilder().
-					Id(stablePanelID(signal.topic, 'l')).
-					Title(signal.label + " (live)").
-					Span(12).
-					GraphMode(common.BigValueGraphModeArea).
-					NoValue("No data").
-					Datasource(dataSourceRef).
-					DataLinks([]cog.Builder[dashboard.DashboardLink]{detailDashboardLink(signal.topic)}).
-					WithTarget(NewMQTTQueryBuilder(signal.topic)),
-			).WithPanel(
-				timeseries.NewPanelBuilder().
-					Id(stablePanelID(signal.topic, 'h')).
-					Title(signal.label + " (history)").
-					Span(12).
-					Datasource(influxDBDataSourceRef).
-					DataLinks([]cog.Builder[dashboard.DashboardLink]{detailDashboardLink(signal.topic)}).
-					WithTarget(NewInfluxDBQueryBuilder(signal.topic)),
-			)
+			builder = addTelemetrySignalPanels(builder, signal, 12)
+		}
+		for _, module := range section.modules {
+			builder = builder.WithRow(dashboard.NewRowBuilder(module.name).Collapsed(false))
+			for _, signal := range module.signals {
+				builder = addTelemetrySignalPanels(builder, signal, 6)
+			}
 		}
 	}
 
 	return builder.Build()
 }
 
+func addTelemetrySignalPanels(builder *dashboard.DashboardBuilder, signal topicSignal, span uint32) *dashboard.DashboardBuilder {
+	return builder.WithPanel(
+		stat.NewPanelBuilder().
+			Id(stablePanelID(signal.topic, 'l')).
+			Title(signal.label + " (live)").
+			Span(span).
+			GraphMode(common.BigValueGraphModeArea).
+			NoValue("No data").
+			Datasource(dataSourceRef).
+			DataLinks([]cog.Builder[dashboard.DashboardLink]{detailDashboardLink(signal.topic)}).
+			WithTarget(NewMQTTQueryBuilder(signal.topic)),
+	).WithPanel(
+		timeseries.NewPanelBuilder().
+			Id(stablePanelID(signal.topic, 'h')).
+			Title(signal.label + " (history)").
+			Span(span).
+			Datasource(influxDBDataSourceRef).
+			DataLinks([]cog.Builder[dashboard.DashboardLink]{detailDashboardLink(signal.topic)}).
+			WithTarget(NewInfluxDBQueryBuilder(signal.topic)),
+	)
+}
+
 // buildSignalDetailDashboard creates a dedicated, literal-topic dashboard.
 // MQTT targets do not support dashboard template variable interpolation, so a
 // dashboard per topic preserves the exact subscription and query filter.
 func buildSignalDetailDashboard(signal topicSignal) (dashboard.Dashboard, error) {
-	return dashboard.NewDashboardBuilder(signal.label+detailTitleSuffix).
+	return dashboard.NewDashboardBuilder(signal.detailLabel+detailTitleSuffix).
 		Uid(detailDashboardKey(signal.topic)).
 		Description("MQTT topic: "+signal.topic).
 		Refresh("1s").
@@ -271,7 +315,7 @@ func buildSignalDetailDashboard(signal topicSignal) (dashboard.Dashboard, error)
 		WithPanel(
 			stat.NewPanelBuilder().
 				Id(stablePanelID(signal.topic, 'd')).
-				Title(signal.label + " (live)").
+				Title(signal.detailLabel + " (live)").
 				Description("Latest value from MQTT topic: " + signal.topic).
 				Span(24).
 				GraphMode(common.BigValueGraphModeArea).
@@ -282,7 +326,7 @@ func buildSignalDetailDashboard(signal topicSignal) (dashboard.Dashboard, error)
 		WithPanel(
 			timeseries.NewPanelBuilder().
 				Id(stablePanelID(signal.topic, 'D')).
-				Title(signal.label + " (history)").
+				Title(signal.detailLabel + " (history)").
 				Description("24-hour InfluxDB history for MQTT topic: " + signal.topic).
 				Span(24).
 				Datasource(influxDBDataSourceRef).
@@ -312,6 +356,15 @@ func createDashboardsWithSignalTopics(signalTopics []SignalTopic) (map[string]da
 				return nil, fmt.Errorf("build detail dashboard for %q: %w", signal.topic, err)
 			}
 			dashboards[detailDashboardKey(signal.topic)] = detailDashboard
+		}
+		for _, module := range section.modules {
+			for _, signal := range module.signals {
+				detailDashboard, err := buildSignalDetailDashboard(signal)
+				if err != nil {
+					return nil, fmt.Errorf("build detail dashboard for %q: %w", signal.topic, err)
+				}
+				dashboards[detailDashboardKey(signal.topic)] = detailDashboard
+			}
 		}
 	}
 

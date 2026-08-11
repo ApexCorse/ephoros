@@ -28,8 +28,8 @@ func TestCreateDashboardsWithSignalTopics(t *testing.T) {
 				`"uid":"generated-telemetry"`, `"refresh":"1s"`, `"from":"now-15m"`, `"type":"alertlist"`,
 				`"title":"Active Alerts"`, `"viewMode":"list"`, `"dashboardAlerts":true`,
 				`"stateFilter":{"firing":true,"pending":true,"recovering":false,"noData":true,"normal":false,"error":true}`,
-				`"title":"Electrical"`, `"title":"Powertrain"`, `"title":"Battery / State Of Charge (live)"`,
-				`"title":"Engine / Oil Pressure (history)"`, `"title":"Engine Speed (live)"`,
+				`"title":"Electrical"`, `"title":"Battery"`, `"title":"State Of Charge (live)"`,
+				`"title":"Powertrain"`, `"title":"Engine"`, `"title":"Oil Pressure (history)"`, `"title":"Engine Speed (live)"`,
 				"grafana-mqtt-datasource", "influxdb-datasource", `"graphMode":"area"`, `"noValue":"No data"`,
 				`"collapsed":false`, `"title":"Open detail"`, `from=${__from}\u0026to=${__to}`,
 			},
@@ -85,12 +85,13 @@ func TestParseSignalTopicHierarchy(t *testing.T) {
 			name:   "groups and sorts sections and signals",
 			topics: []SignalTopic{{Topic: "data/z_section/oil_temp"}, {Topic: "data/a-section/wheel-speed"}, {Topic: "data/a-section/brake/pressure"}},
 			want: []topicSection{
-				{name: "A Section", signals: []topicSignal{{label: "Brake / Pressure", topic: "data/a-section/brake/pressure"}, {label: "Wheel Speed", topic: "data/a-section/wheel-speed"}}},
-				{name: "Z Section", signals: []topicSignal{{label: "Oil Temp", topic: "data/z_section/oil_temp"}}},
+				{name: "A Section", signals: []topicSignal{{label: "Wheel Speed", detailLabel: "Wheel Speed", topic: "data/a-section/wheel-speed"}}, modules: []topicModule{{name: "Brake", signals: []topicSignal{{label: "Pressure", detailLabel: "Brake / Pressure", topic: "data/a-section/brake/pressure"}}}}},
+				{name: "Z Section", signals: []topicSignal{{label: "Oil Temp", detailLabel: "Oil Temp", topic: "data/z_section/oil_temp"}}},
 			},
 		},
 		{name: "rejects wrong prefix", topics: []SignalTopic{{Topic: "vehicle/powertrain/engine-speed"}}, wantError: `must start with "data/"`},
 		{name: "rejects missing signal", topics: []SignalTopic{{Topic: "data/powertrain"}}, wantError: "section and signal"},
+		{name: "rejects more than one module", topics: []SignalTopic{{Topic: "data/powertrain/engine/cooling/temperature"}}, wantError: "optionally preceded by one module"},
 		{name: "rejects empty section", topics: []SignalTopic{{Topic: "data//engine-speed"}}, wantError: "levels cannot be empty"},
 		{name: "rejects empty signal", topics: []SignalTopic{{Topic: "data/powertrain/"}}, wantError: "levels cannot be empty"},
 		{name: "rejects duplicate", topics: []SignalTopic{{Topic: "data/powertrain/engine-speed"}, {Topic: "data/powertrain/engine-speed"}}, wantError: "duplicate topic"},
@@ -107,6 +108,53 @@ func TestParseSignalTopicHierarchy(t *testing.T) {
 			assert.Equal(t, test.want, got)
 		})
 	}
+}
+
+func TestBuildTelemetryDashboardUsesCompactModuleGrid(t *testing.T) {
+	sections, err := parseSignalTopicHierarchy([]SignalTopic{
+		{Topic: "data/battery/voltage"},
+		{Topic: "data/battery/m1/s3"},
+		{Topic: "data/battery/m1/s1"},
+		{Topic: "data/battery/m1/s2"},
+	})
+	require.NoError(t, err)
+
+	telemetry, err := buildTelemetryDashboard(sections)
+	require.NoError(t, err)
+	encoded, err := json.Marshal(telemetry)
+	require.NoError(t, err)
+
+	type gridPos struct {
+		W int `json:"w"`
+		X int `json:"x"`
+	}
+	type panel struct {
+		Type    string  `json:"type"`
+		Title   string  `json:"title"`
+		GridPos gridPos `json:"gridPos"`
+	}
+	var generated struct {
+		Panels []panel `json:"panels"`
+	}
+	require.NoError(t, json.Unmarshal(encoded, &generated))
+
+	panelsByTitle := make(map[string]panel, len(generated.Panels))
+	panelIndexes := make(map[string]int, len(generated.Panels))
+	for index, panel := range generated.Panels {
+		panelsByTitle[panel.Title] = panel
+		panelIndexes[panel.Title] = index
+	}
+	assert.Equal(t, "row", panelsByTitle["Battery"].Type)
+	assert.Equal(t, "row", panelsByTitle["M1"].Type)
+	assert.Equal(t, gridPos{W: 12, X: 0}, panelsByTitle["Voltage (live)"].GridPos)
+	assert.Equal(t, gridPos{W: 12, X: 12}, panelsByTitle["Voltage (history)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 0}, panelsByTitle["S1 (live)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 6}, panelsByTitle["S1 (history)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 12}, panelsByTitle["S2 (live)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 18}, panelsByTitle["S2 (history)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 0}, panelsByTitle["S3 (live)"].GridPos)
+	assert.Equal(t, gridPos{W: 6, X: 6}, panelsByTitle["S3 (history)"].GridPos)
+	assert.Less(t, panelIndexes["Voltage (live)"], panelIndexes["M1"])
 }
 
 func TestHumanizeTopicSegment(t *testing.T) {
