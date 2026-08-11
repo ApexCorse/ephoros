@@ -145,7 +145,7 @@ config EPHOROS_CAN_SIMULATOR_SEED
 config EPHOROS_CAN_RX_GPIO
     int "CAN RX GPIO"
     depends on EPHOROS_CAN_ENABLED
-    default 34
+    default 18
     range 0 48
     help
         ESP32 GPIO connected to the RXD output of the CAN transceiver.
@@ -153,7 +153,7 @@ config EPHOROS_CAN_RX_GPIO
 config EPHOROS_CAN_TX_GPIO
     int "CAN TX GPIO"
     depends on EPHOROS_CAN_ENABLED
-    default -1
+    default 19
     range -1 48
     help
         ESP32 GPIO connected to the TXD input of the CAN transceiver. Set to
@@ -221,7 +221,7 @@ menu "InfluxDB telemetry"
 
 config EPHOROS_INFLUXDB_WRITE_URL
 	string "InfluxDB Write API URL"
-	default ""
+	default "https://<host>/api/v2/write?org=<org>&bucket=<bucket>&precision=ms"
 	help
 		The complete InfluxDB 2.x Write API URL, including its organization,
 		bucket, and precision query parameters. For example:
