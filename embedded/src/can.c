@@ -142,6 +142,7 @@ esp_err_t can_start(void) {
 		},
 		.bit_timing.bitrate = CONFIG_EPHOROS_CAN_BITRATE,
 		.flags.enable_listen_only = CONFIG_EPHOROS_CAN_LISTEN_ONLY,
+		.tx_queue_depth = CONFIG_EPHOROS_CAN_LISTEN_ONLY == 0 ? 1 : 0,
 	};
 	twai_node_handle_t node = NULL;
 	esp_err_t err = twai_new_node_onchip(&config, &node);

@@ -166,12 +166,14 @@ config EPHOROS_CAN_BITRATE
     range 10000 1000000
 
 config EPHOROS_CAN_LISTEN_ONLY
-    bool "Listen-only mode"
+    int "CAN mode (1 = listen-only, 0 = normal)"
     depends on EPHOROS_CAN_ENABLED
-    default y
+    default 1
+    range 0 1
     help
-        Receive frames without transmitting acknowledgements or error frames.
-        Disable only when this node must actively participate on the CAN bus.
+        Set to 1 to receive frames without transmitting acknowledgements or
+        error frames. Set to 0 only when this node must actively participate
+        on the CAN bus.
 
 config EPHOROS_CAN_RX_QUEUE_DEPTH
     int "Received-frame queue depth"
