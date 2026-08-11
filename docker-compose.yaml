@@ -8,27 +8,27 @@ services:
       args:
         SERVICE: config
     volumes:
-      - ./:/opt
+      - ${CONFIG_SOURCE_PATH:-./}:${CONFIG_CONTAINER_PATH:-/opt}
     environment:
-      - DBC_FILE_PATH=/opt/config.dbc
-      - DASHBOARDS_PATH=/opt/grafana/provisioning/dashboards/
-      - ALERTS_PATH=/opt/grafana/provisioning/alerting/
+      - DBC_FILE_PATH=${DBC_FILE_PATH:-/opt/config.dbc}
+      - DASHBOARDS_PATH=${DASHBOARDS_PATH:-/opt/grafana/provisioning/dashboards/}
+      - ALERTS_PATH=${ALERTS_PATH:-/opt/grafana/provisioning/alerting/}
       - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
   broker:
     image: emqx/emqx-enterprise:5.10.0
-    hostname: docker.emqx.com
+    hostname: ${EMQX_HOSTNAME:-docker.emqx.com}
     networks:
       default:
         aliases:
           - broker
     environment:
-      - "EMQX_NODE_NAME=emqx@docker.emqx.com"
+      - "EMQX_NODE_NAME=${EMQX_NODE_NAME:-emqx@docker.emqx.com}"
       - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
-      - "EMQX_CLUSTER__STATIC__SEEDS=[emqx@docker.emqx.com]"
-      - "EMQX_HOST=docker.emqx.com"
+      - "EMQX_CLUSTER__STATIC__SEEDS=${EMQX_CLUSTER_STATIC_SEEDS:-[emqx@docker.emqx.com]}"
+      - "EMQX_HOST=${EMQX_HOST:-docker.emqx.com}"
     ports:
-      - 18083:18083
-      - 1883:1883
+      - "${EMQX_DASHBOARD_PORT:-18083}:${EMQX_DASHBOARD_CONTAINER_PORT:-18083}"
+      - "${EMQX_MQTT_PORT:-1883}:${EMQX_MQTT_CONTAINER_PORT:-1883}"
     healthcheck:
       test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
       interval: 5s
@@ -45,10 +45,10 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
     ports:
-      - 8086:8086
+      - "${INFLUXDB_PORT:-8086}:${INFLUXDB_CONTAINER_PORT:-8086}"
     volumes:
-      - influxdb-data:/var/lib/influxdb2
-      - influxdb-config:/etc/influxdb2
+      - influxdb-data:${INFLUXDB_DATA_PATH:-/var/lib/influxdb2}
+      - influxdb-config:${INFLUXDB_CONFIG_PATH:-/etc/influxdb2}
     healthcheck:
       test: ["CMD", "influx", "ping"]
       interval: 5s
@@ -70,7 +70,7 @@ services:
     networks:
       - default
     ports:
-      - 3000:3000
+      - "${GRAFANA_PORT:-3000}:${GRAFANA_CONTAINER_PORT:-3000}"
     depends_on:
       broker:
         condition: service_healthy
@@ -79,8 +79,8 @@ services:
       influxdb:
         condition: service_healthy
     volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/provisioning/dashboards:/var/lib/grafana/dashboards
+      - ${GRAFANA_PROVISIONING_SOURCE_PATH:-./grafana/provisioning}:${GRAFANA_PROVISIONING_PATH:-/etc/grafana/provisioning}
+      - ${GRAFANA_DASHBOARDS_SOURCE_PATH:-./grafana/provisioning/dashboards}:${GRAFANA_DASHBOARDS_PATH:-/var/lib/grafana/dashboards}
 
 networks:
   default:
@@ -88,4 +88,6 @@ networks:
 
 volumes:
   influxdb-data:
+    name: ${INFLUXDB_DATA_VOLUME:-influxdb-data}
   influxdb-config:
+    name: ${INFLUXDB_CONFIG_VOLUME:-influxdb-config}
