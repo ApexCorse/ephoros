@@ -17,6 +17,11 @@ func main() {
 		fmt.Println("missing env DASHBOARDS_PATH")
 		os.Exit(1)
 	}
+	alertsPath := os.Getenv("ALERTS_PATH")
+	if alertsPath == "" {
+		fmt.Println("missing env ALERTS_PATH")
+		os.Exit(1)
+	}
 	preconfigGrafana()
 
 	if err := cleanProvisioningFolder(dashboardsPath); err != nil {
@@ -28,6 +33,10 @@ func main() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+	if err := cleanProvisioningFolder(alertsPath); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
 
 	config, err := getDbcConfig()
 	if err != nil {
@@ -35,7 +44,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	dashboards, err := createDashboardsWithSignalTopics(config.Topics)
+	signalTopics, alertSignals, err := signalsFromMetadata(config)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	dashboards, err := createDashboardsWithSignalTopics(signalTopics)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
@@ -65,6 +80,11 @@ func main() {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
+	}
+
+	if err := WriteAlertProvisioning(filepath.Join(alertsPath, "alerts.json"), alertSignals); err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
 }
 

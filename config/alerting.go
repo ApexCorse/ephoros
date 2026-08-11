@@ -229,9 +229,9 @@ func validateAlertSignal(signal AlertSignal) error {
 		if math.IsNaN(*threshold.value) || math.IsInf(*threshold.value, 0) {
 			return fmt.Errorf("%s threshold must be finite for topic %q", threshold.name, signal.Topic)
 		}
-		if previous != nil && previous.value >= *threshold.value {
+		if previous != nil && previous.value > *threshold.value {
 			return fmt.Errorf(
-				"%s threshold must be less than %s threshold for topic %q",
+				"%s threshold must not exceed %s threshold for topic %q",
 				previous.name,
 				threshold.name,
 				signal.Topic,
@@ -366,14 +366,14 @@ func buildCriticalExpression(signal AlertSignal) string {
 
 func buildWarningExpression(signal AlertSignal) string {
 	conditions := make([]string, 0, 2)
-	if signal.WarningLow != nil {
+	if signal.WarningLow != nil && (signal.CriticalLow == nil || *signal.WarningLow != *signal.CriticalLow) {
 		low := "$B <= " + formatThreshold(*signal.WarningLow)
 		if signal.CriticalLow != nil {
 			low = "(" + low + " && $B > " + formatThreshold(*signal.CriticalLow) + ")"
 		}
 		conditions = append(conditions, low)
 	}
-	if signal.WarningHigh != nil {
+	if signal.WarningHigh != nil && (signal.CriticalHigh == nil || *signal.WarningHigh != *signal.CriticalHigh) {
 		high := "$B >= " + formatThreshold(*signal.WarningHigh)
 		if signal.CriticalHigh != nil {
 			high = "(" + high + " && $B < " + formatThreshold(*signal.CriticalHigh) + ")"

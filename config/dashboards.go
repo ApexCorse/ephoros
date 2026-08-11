@@ -10,7 +10,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/ApexCorse/vera"
 	"github.com/grafana/grafana-foundation-sdk/go/cog"
 	"github.com/grafana/grafana-foundation-sdk/go/common"
 	"github.com/grafana/grafana-foundation-sdk/go/dashboard"
@@ -57,6 +56,14 @@ type topicSignal struct {
 	topic string
 }
 
+// SignalTopic is the topic mapping needed to generate dashboards. It stays
+// local because Vera v0.14 exposes MQTT mappings as signal metadata instead
+// of the former SignalTopic collection.
+type SignalTopic struct {
+	Signal string
+	Topic  string
+}
+
 // alertListOptions mirrors Grafana's native alertlist panel options. It is
 // local because the Foundation SDK does not currently generate this panel.
 type alertListOptions struct {
@@ -82,7 +89,7 @@ type alertListStateFilter struct {
 
 // parseSignalTopicHierarchy groups topics into dashboard sections. A valid topic
 // has a section and signal path after the required data/ prefix.
-func parseSignalTopicHierarchy(signalTopics []vera.SignalTopic) ([]topicSection, error) {
+func parseSignalTopicHierarchy(signalTopics []SignalTopic) ([]topicSection, error) {
 	sectionsByName := make(map[string][]topicSignal)
 	seenTopics := make(map[string]struct{}, len(signalTopics))
 
@@ -286,7 +293,7 @@ func buildSignalDetailDashboard(signal topicSignal) (dashboard.Dashboard, error)
 
 // createDashboardsWithSignalTopics generates a stable overview and one
 // deterministic drill-down dashboard per DBC signal-topic mapping.
-func createDashboardsWithSignalTopics(signalTopics []vera.SignalTopic) (map[string]dashboard.Dashboard, error) {
+func createDashboardsWithSignalTopics(signalTopics []SignalTopic) (map[string]dashboard.Dashboard, error) {
 	sections, err := parseSignalTopicHierarchy(signalTopics)
 	if err != nil {
 		return nil, err
