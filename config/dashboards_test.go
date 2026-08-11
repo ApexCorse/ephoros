@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ApexCorse/vera"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,13 +12,13 @@ import (
 func TestCreateDashboardsWithSignalTopics(t *testing.T) {
 	tests := []struct {
 		name       string
-		topics     []vera.SignalTopic
+		topics     []SignalTopic
 		wantCount  int
 		wantPieces []string
 	}{
 		{
 			name: "stable overview and detail dashboards",
-			topics: []vera.SignalTopic{
+			topics: []SignalTopic{
 				{Signal: "OilPressure", Topic: "data/powertrain/engine/oil-pressure"},
 				{Signal: "StateOfCharge", Topic: "data/electrical/battery/state-of-charge"},
 				{Signal: "EngineSpeed", Topic: "data/powertrain/engine-speed"},
@@ -78,23 +77,23 @@ func TestCreateDashboardsWithSignalTopics(t *testing.T) {
 func TestParseSignalTopicHierarchy(t *testing.T) {
 	tests := []struct {
 		name      string
-		topics    []vera.SignalTopic
+		topics    []SignalTopic
 		want      []topicSection
 		wantError string
 	}{
 		{
 			name:   "groups and sorts sections and signals",
-			topics: []vera.SignalTopic{{Topic: "data/z_section/oil_temp"}, {Topic: "data/a-section/wheel-speed"}, {Topic: "data/a-section/brake/pressure"}},
+			topics: []SignalTopic{{Topic: "data/z_section/oil_temp"}, {Topic: "data/a-section/wheel-speed"}, {Topic: "data/a-section/brake/pressure"}},
 			want: []topicSection{
 				{name: "A Section", signals: []topicSignal{{label: "Brake / Pressure", topic: "data/a-section/brake/pressure"}, {label: "Wheel Speed", topic: "data/a-section/wheel-speed"}}},
 				{name: "Z Section", signals: []topicSignal{{label: "Oil Temp", topic: "data/z_section/oil_temp"}}},
 			},
 		},
-		{name: "rejects wrong prefix", topics: []vera.SignalTopic{{Topic: "vehicle/powertrain/engine-speed"}}, wantError: `must start with "data/"`},
-		{name: "rejects missing signal", topics: []vera.SignalTopic{{Topic: "data/powertrain"}}, wantError: "section and signal"},
-		{name: "rejects empty section", topics: []vera.SignalTopic{{Topic: "data//engine-speed"}}, wantError: "levels cannot be empty"},
-		{name: "rejects empty signal", topics: []vera.SignalTopic{{Topic: "data/powertrain/"}}, wantError: "levels cannot be empty"},
-		{name: "rejects duplicate", topics: []vera.SignalTopic{{Topic: "data/powertrain/engine-speed"}, {Topic: "data/powertrain/engine-speed"}}, wantError: "duplicate topic"},
+		{name: "rejects wrong prefix", topics: []SignalTopic{{Topic: "vehicle/powertrain/engine-speed"}}, wantError: `must start with "data/"`},
+		{name: "rejects missing signal", topics: []SignalTopic{{Topic: "data/powertrain"}}, wantError: "section and signal"},
+		{name: "rejects empty section", topics: []SignalTopic{{Topic: "data//engine-speed"}}, wantError: "levels cannot be empty"},
+		{name: "rejects empty signal", topics: []SignalTopic{{Topic: "data/powertrain/"}}, wantError: "levels cannot be empty"},
+		{name: "rejects duplicate", topics: []SignalTopic{{Topic: "data/powertrain/engine-speed"}, {Topic: "data/powertrain/engine-speed"}}, wantError: "duplicate topic"},
 	}
 
 	for _, test := range tests {

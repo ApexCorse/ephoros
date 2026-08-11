@@ -14,7 +14,8 @@ import (
 
 const validDBC = `BO_ 123 Vehicle: 8 ECU
 	SG_ Speed : 0|16@1+ (0.1,0) [0|100] "km/h" Gateway
-CM_ SG_ 123 Speed "vera:mqtt-topic=vehicle/speed";`
+BA_DEF_ SG_ "VeraMqttTopic" STRING ;
+BA_ "VeraMqttTopic" SG_ 123 Speed "vehicle/speed";`
 
 func TestGenerateRandomData(t *testing.T) {
 	tests := []struct {
@@ -167,11 +168,16 @@ func TestGetTopicsFromConfig(t *testing.T) {
 	}{
 		{name: "empty", config: &vera.Config{}, want: []string{}},
 		{
-			name: "preserves topic order and duplicates",
-			config: &vera.Config{Topics: []vera.SignalTopic{
-				{MessageID: 1, Signal: "Speed", Topic: "vehicle/speed"},
-				{MessageID: 2, Signal: "Voltage", Topic: "vehicle/voltage"},
-				{MessageID: 3, Signal: "SpeedBackup", Topic: "vehicle/speed"},
+			name: "preserves message and signal order, duplicates, and skips empty topics",
+			config: &vera.Config{Messages: []vera.Message{
+				{Signals: []vera.Signal{
+					{Name: "Speed", Metadata: vera.SignalMetadata{MQTTTopic: "vehicle/speed"}},
+					{Name: "NoTopic"},
+					{Name: "Voltage", Metadata: vera.SignalMetadata{MQTTTopic: "vehicle/voltage"}},
+				}},
+				{Signals: []vera.Signal{
+					{Name: "SpeedBackup", Metadata: vera.SignalMetadata{MQTTTopic: "vehicle/speed"}},
+				}},
 			}},
 			want: []string{"vehicle/speed", "vehicle/voltage", "vehicle/speed"},
 		},

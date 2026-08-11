@@ -47,6 +47,17 @@ func TestBuildAlertProvisioning(t *testing.T) {
 			wantNoDataStates: []string{"NoData"}, wantLookbacks: []int{alertDefaultLookbackSecs}, wantConditions: []string{"$B >= 80"},
 		},
 		{
+			name: "equal critical and warning limits omit empty warning bands",
+			signals: []AlertSignal{{
+				Topic:       "data/powertrain/coolant-temperature",
+				CriticalLow: float64Pointer(0), WarningLow: float64Pointer(0),
+				WarningHigh: float64Pointer(120), CriticalHigh: float64Pointer(120),
+			}},
+			wantRuleCount: 1, wantTopics: []string{"data/powertrain/coolant-temperature"},
+			wantSeverities: []string{"critical"}, wantNoDataStates: []string{"NoData"},
+			wantLookbacks: []int{alertDefaultLookbackSecs}, wantConditions: []string{"($B <= 0 || $B >= 120)"},
+		},
+		{
 			name:          "signals without policies produce no rules",
 			signals:       []AlertSignal{{Topic: "data/interior/ambient-light"}},
 			wantRuleCount: 0,
@@ -69,6 +80,7 @@ func TestBuildAlertProvisioning(t *testing.T) {
 				assert.Equal(t, test.wantSeverities[index], rule.Labels["severity"])
 				assert.Equal(t, test.wantNoDataStates[index], rule.NoDataState)
 				assert.LessOrEqual(t, len(rule.UID), 40)
+				assert.Equal(t, "0s", rule.For)
 				assertAlertData(t, rule, test.wantLookbacks[index], test.wantConditions[index])
 			}
 			if test.wantDashboardUID != "" {
@@ -160,8 +172,7 @@ func TestBuildAlertProvisioningRejectsInvalidSignals(t *testing.T) {
 		{name: "negative stale interval", signals: []AlertSignal{{Topic: "data/a/value", StaleAfterSeconds: intPointer(-1)}}, want: "must be positive"},
 		{name: "NaN threshold", signals: []AlertSignal{{Topic: "data/a/value", CriticalHigh: float64Pointer(math.NaN())}}, want: "must be finite"},
 		{name: "infinite threshold", signals: []AlertSignal{{Topic: "data/a/value", WarningLow: float64Pointer(math.Inf(1))}}, want: "must be finite"},
-		{name: "descending thresholds", signals: []AlertSignal{{Topic: "data/a/value", CriticalLow: float64Pointer(300), WarningLow: float64Pointer(200)}}, want: "critical low threshold must be less than warning low threshold"},
-		{name: "equal thresholds", signals: []AlertSignal{{Topic: "data/a/value", WarningHigh: float64Pointer(100), CriticalHigh: float64Pointer(100)}}, want: "warning high threshold must be less than critical high threshold"},
+		{name: "descending thresholds", signals: []AlertSignal{{Topic: "data/a/value", CriticalLow: float64Pointer(300), WarningLow: float64Pointer(200)}}, want: "critical low threshold must not exceed warning low threshold"},
 	}
 
 	for _, test := range tests {
@@ -184,6 +195,8 @@ func TestAlertExpressions(t *testing.T) {
 		{name: "critical high only", signal: AlertSignal{CriticalHigh: float64Pointer(2e6)}, wantCritical: "$B >= 2e+06"},
 		{name: "both warning bounds", signal: AlertSignal{WarningLow: float64Pointer(-1), WarningHigh: float64Pointer(1)}, wantWarning: "($B <= -1 || $B >= 1)"},
 		{name: "both critical bounds", signal: AlertSignal{CriticalLow: float64Pointer(-2), CriticalHigh: float64Pointer(2)}, wantCritical: "($B <= -2 || $B >= 2)"},
+		{name: "equal low critical and warning limits omit warning low band", signal: AlertSignal{CriticalLow: float64Pointer(-2), WarningLow: float64Pointer(-2)}, wantCritical: "$B <= -2"},
+		{name: "equal high warning and critical limits omit warning high band", signal: AlertSignal{WarningHigh: float64Pointer(2), CriticalHigh: float64Pointer(2)}, wantCritical: "$B >= 2"},
 	}
 
 	for _, test := range tests {

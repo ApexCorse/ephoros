@@ -201,9 +201,13 @@ func writeTopicCatalog(outputPath string, topics []string) error {
 
 // getTopicsFromConfig extracts MQTT topics from the vera config
 func getTopicsFromConfig(config *vera.Config) []string {
-	topics := make([]string, len(config.Topics))
-	for i := range config.Topics {
-		topics[i] = config.Topics[i].Topic
+	topics := make([]string, 0)
+	for _, message := range config.Messages {
+		for _, signal := range message.Signals {
+			if topic := signal.Metadata.MQTTTopic; topic != "" {
+				topics = append(topics, topic)
+			}
+		}
 	}
 
 	return topics

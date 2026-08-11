@@ -12,6 +12,7 @@ services:
     environment:
       - DBC_FILE_PATH=/opt/config.dbc
       - DASHBOARDS_PATH=/opt/grafana/provisioning/dashboards/
+      - ALERTS_PATH=/opt/grafana/provisioning/alerting/
       - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
   broker:
     image: emqx/emqx-enterprise:5.10.0

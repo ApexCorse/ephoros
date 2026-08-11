@@ -15,7 +15,8 @@ BS_:
 BU_: ECU
 BO_ 256 Powertrain: 8 ECU
  SG_ EngineSpeed : 0|16@1+ (1,0) [0|100] "rpm" ECU
-CM_ SG_ 256 EngineSpeed "vera:mqtt-topic=data/powertrain/engine-speed";
+BA_DEF_ SG_ "VeraMqttTopic" STRING ;
+BA_ "VeraMqttTopic" SG_ 256 EngineSpeed "data/powertrain/engine-speed";
 `
 
 func TestGetDbcConfig(t *testing.T) {
@@ -67,8 +68,10 @@ func TestGetDbcConfig(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.NotNil(t, config)
-			assert.Len(t, config.Topics, test.wantTopics)
-			assert.Equal(t, "data/powertrain/engine-speed", config.Topics[0].Topic)
+			topics, _, err := signalsFromMetadata(config)
+			require.NoError(t, err)
+			assert.Len(t, topics, test.wantTopics)
+			assert.Equal(t, "data/powertrain/engine-speed", topics[0].Topic)
 		})
 	}
 }
