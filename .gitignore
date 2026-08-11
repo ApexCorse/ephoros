@@ -5,5 +5,6 @@
 **/.vscode/settings.json
 
 grafana/provisioning/dashboards/
+grafana/provisioning/alerting/
 config.dbc
 embedded/src/telemetry_catalog.h
