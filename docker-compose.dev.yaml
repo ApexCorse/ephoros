@@ -8,9 +8,9 @@ services:
       args:
         SERVICE: simulator
     environment:
-      - DBC_FILE_PATH=/opt/config.dbc
-      - SIMULATOR_INTERVAL=200
-      - INFLUXDB_URL=http://influxdb:8086
+      - DBC_FILE_PATH=${DBC_FILE_PATH:-/opt/config.dbc}
+      - SIMULATOR_INTERVAL=${SIMULATOR_INTERVAL:-200}
+      - INFLUXDB_URL=${INFLUXDB_URL:-http://influxdb:8086}
       - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-ephoros-dev-token}
       - INFLUXDB_INIT_ORG=${INFLUXDB_INIT_ORG:-ephoros}
       - INFLUXDB_INIT_BUCKET=${INFLUXDB_INIT_BUCKET:-telemetry}
@@ -26,7 +26,7 @@ services:
       influxdb:
         condition: service_healthy
     volumes:
-      - ./:/opt
+      - ${SIMULATOR_SOURCE_PATH:-./}:${SIMULATOR_CONTAINER_PATH:-/opt}
 
 networks:
   default:
