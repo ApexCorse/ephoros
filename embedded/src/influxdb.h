@@ -29,12 +29,13 @@ typedef struct {
 influxdb_config_t influxdb_config_from_kconfig(void);
 
 /**
- * Start the task that forwards decoded CAN signals to InfluxDB.
- *
- * The connection settings are read from Kconfig inside the module, so callers
- * do not need to retain or expose an InfluxDB client or its credentials.
+ * Initialize the process-wide InfluxDB client used by the telemetry worker.
+ * This function does not create a task.
  */
 esp_err_t influxdb_start(void);
+
+/** Forward one decoded CAN signal to InfluxDB. */
+esp_err_t influxdb_write_signal(const can_decoded_signal_t *signal);
 
 /** Initialize an InfluxDB client. Does not perform network I/O. */
 esp_err_t influxdb_client_init(

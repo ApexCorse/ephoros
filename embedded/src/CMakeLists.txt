@@ -2,7 +2,8 @@
 # without default 'CMakeLists.txt' file.
 
 FILE(GLOB_RECURSE app_sources ${CMAKE_SOURCE_DIR}/src/*.*)
-set(app_include_dirs)
+list(APPEND app_sources ${CMAKE_SOURCE_DIR}/lib/mqtt/mqtt.c)
+set(app_include_dirs ${CMAKE_SOURCE_DIR}/lib/mqtt)
 
 if(CONFIG_EPHOROS_CAN_SIMULATOR)
     set(dbc_file ${CMAKE_SOURCE_DIR}/../config.dbc)
@@ -40,5 +41,5 @@ endif()
 idf_component_register(
 	SRCS ${app_sources}
 	INCLUDE_DIRS ${app_include_dirs}
-	REQUIRES esp_http_client esp_modem esp_driver_twai mbedtls
+	REQUIRES esp_http_client esp_modem esp_driver_twai mbedtls mqtt
 )

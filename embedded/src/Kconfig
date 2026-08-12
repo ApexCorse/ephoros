@@ -113,6 +113,64 @@ endif
 
 endmenu
 
+menu "MQTT telemetry"
+
+config EPHOROS_MQTT_ENABLED
+	bool "Enable MQTT telemetry"
+	default n
+	help
+		Forward decoded CAN signals to MQTT in addition to InfluxDB. MQTT
+		startup failures do not stop CAN or InfluxDB telemetry.
+
+if EPHOROS_MQTT_ENABLED
+
+config EPHOROS_MQTT_BROKER_URI
+	string "MQTT broker URI"
+	default "mqtt://<host>:1883"
+	help
+		A device-reachable plaintext MQTT broker URI, for example
+		mqtt://192.168.1.10:1883. The Docker Compose hostname "broker" is
+		only resolvable from that Docker network.
+
+config EPHOROS_MQTT_USERNAME
+	string "MQTT username"
+	default ""
+	help
+		Username used to authenticate with the MQTT broker. This value is
+		stored in sdkconfig; provision it from NVS for production devices.
+
+config EPHOROS_MQTT_PASSWORD
+	string "MQTT password"
+	default ""
+	help
+		Password used to authenticate with the MQTT broker. This value is
+		stored in sdkconfig; do not commit a production password.
+
+config EPHOROS_MQTT_QUEUE_DEPTH
+	int "MQTT outbound queue depth"
+	default 128
+	range 1 1024
+	help
+		Number of decoded signals buffered while MQTT is slow or disconnected.
+		New MQTT messages are dropped when this queue is full; InfluxDB is
+		not affected.
+
+endif
+
+endmenu
+
+menu "Telemetry fan-out"
+
+config EPHOROS_INFLUXDB_QUEUE_DEPTH
+	int "InfluxDB outbound queue depth"
+	default 128
+	range 1 1024
+	help
+		Number of decoded signals waiting for InfluxDB. New InfluxDB messages
+		are dropped when this queue is full; MQTT is not affected.
+
+endmenu
+
 menu "Ephoros CAN receiver"
 
 config EPHOROS_CAN_ENABLED
