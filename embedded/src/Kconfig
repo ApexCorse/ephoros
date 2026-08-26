@@ -185,8 +185,9 @@ config EPHOROS_CAN_SIMULATOR
     depends on !EPHOROS_CAN_ENABLED
     default n
     help
-        Generate values for the MQTT topics declared in config.dbc and feed
-        them to InfluxDB. The topic catalog is generated at build time.
+        Generate bounded Gaussian values for the MQTT topics declared in
+        config.dbc and feed them to InfluxDB. The signal catalog is generated
+        at build time.
 
 config EPHOROS_CAN_SIMULATOR_INTERVAL_MS
     int "Simulator sample interval (ms)"

@@ -6,12 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,7 +24,7 @@ import (
 
 func main() {
 	dbcFilePath := flag.String("dbc-file", os.Getenv("DBC_FILE_PATH"), "path to the DBC file")
-	catalogOutput := flag.String("catalog-output", "", "write a C topic catalog to this file and exit")
+	catalogOutput := flag.String("catalog-output", "", "write a C telemetry catalog to this file and exit")
 	flag.Parse()
 
 	if *dbcFilePath == "" {
@@ -35,8 +37,8 @@ func main() {
 	}
 
 	if *catalogOutput != "" {
-		if err := writeTopicCatalog(*catalogOutput, getTopicsFromConfig(config)); err != nil {
-			log.Fatalf("[SIMULATOR_MAIN] couldn't write topic catalog: %s\n", err.Error())
+		if err := writeTelemetryCatalog(*catalogOutput, getSimulatorSignalsFromConfig(config)); err != nil {
+			log.Fatalf("[SIMULATOR_MAIN] couldn't write telemetry catalog: %s\n", err.Error())
 		}
 		return
 	}
@@ -167,11 +169,29 @@ func getDbcConfig(dbcFilePath string) (*vera.Config, error) {
 	return config, nil
 }
 
-// writeTopicCatalog exports the same DBC topic set used by the MQTT simulator
-// as a C header consumable by the embedded telemetry simulator.
-func writeTopicCatalog(outputPath string, topics []string) error {
-	if len(topics) == 0 {
+type simulatorSignal struct {
+	Topic string
+	Name  string
+	Unit  string
+	Min   float32
+	Max   float32
+}
+
+// writeTelemetryCatalog exports the DBC signal data needed by the embedded
+// telemetry simulator as a C header.
+func writeTelemetryCatalog(outputPath string, signals []simulatorSignal) error {
+	if len(signals) == 0 {
 		return fmt.Errorf("DBC config contains no MQTT topics")
+	}
+	for _, signal := range signals {
+		if math.IsNaN(float64(signal.Min)) || math.IsInf(float64(signal.Min), 0) ||
+			math.IsNaN(float64(signal.Max)) || math.IsInf(float64(signal.Max), 0) {
+			return fmt.Errorf("DBC signal %q has non-finite bounds", signal.Name)
+		}
+		if signal.Min > signal.Max {
+			return fmt.Errorf("DBC signal %q has minimum %g greater than maximum %g",
+				signal.Name, signal.Min, signal.Max)
+		}
 	}
 
 	file, err := os.Create(outputPath)
@@ -183,15 +203,26 @@ func writeTopicCatalog(outputPath string, topics []string) error {
 	if _, err = fmt.Fprint(file, "// Code generated from config.dbc; DO NOT EDIT.\n#pragma once\n\n"); err != nil {
 		return err
 	}
-	if _, err = fmt.Fprintf(file, "#define EPHOROS_TELEMETRY_SIMULATOR_TOPIC_COUNT %d\n\n", len(topics)); err != nil {
+	if _, err = fmt.Fprint(file, "typedef struct {\n"+
+		"\tconst char *topic;\n"+
+		"\tconst char *name;\n"+
+		"\tconst char *unit;\n"+
+		"\tfloat min;\n"+
+		"\tfloat max;\n"+
+		"} ephoros_telemetry_simulator_signal_t;\n\n"); err != nil {
 		return err
 	}
-	if _, err = fmt.Fprintln(file, "static const char * const ephoros_telemetry_simulator_topics[] = {"); err != nil {
+	if _, err = fmt.Fprintf(file, "#define EPHOROS_TELEMETRY_SIMULATOR_SIGNAL_COUNT %d\n\n", len(signals)); err != nil {
 		return err
 	}
-	for _, topic := range topics {
+	if _, err = fmt.Fprintln(file, "static const ephoros_telemetry_simulator_signal_t ephoros_telemetry_simulator_signals[] = {"); err != nil {
+		return err
+	}
+	for _, signal := range signals {
 		// %q produces a valid quoted Go string, whose escaping is also valid C.
-		if _, err = fmt.Fprintf(file, "\t%q,\n", topic); err != nil {
+		if _, err = fmt.Fprintf(file,
+			"\t{.topic = %q, .name = %q, .unit = %q, .min = %s, .max = %s},\n",
+			signal.Topic, signal.Name, signal.Unit, formatCFloat(signal.Min), formatCFloat(signal.Max)); err != nil {
 			return err
 		}
 	}
@@ -199,15 +230,39 @@ func writeTopicCatalog(outputPath string, topics []string) error {
 	return err
 }
 
-// getTopicsFromConfig extracts MQTT topics from the vera config
-func getTopicsFromConfig(config *vera.Config) []string {
-	topics := make([]string, 0)
+func formatCFloat(value float32) string {
+	formatted := strconv.FormatFloat(float64(value), 'g', -1, 32)
+	if !strings.ContainsAny(formatted, ".eE") {
+		formatted += ".0"
+	}
+	return formatted + "f"
+}
+
+func getSimulatorSignalsFromConfig(config *vera.Config) []simulatorSignal {
+	signals := make([]simulatorSignal, 0)
 	for _, message := range config.Messages {
 		for _, signal := range message.Signals {
-			if topic := signal.Metadata.MQTTTopic; topic != "" {
-				topics = append(topics, topic)
+			if signal.Metadata.MQTTTopic == "" {
+				continue
 			}
+			signals = append(signals, simulatorSignal{
+				Topic: signal.Metadata.MQTTTopic,
+				Name:  signal.Name,
+				Unit:  signal.Unit,
+				Min:   signal.Min,
+				Max:   signal.Max,
+			})
 		}
+	}
+	return signals
+}
+
+// getTopicsFromConfig extracts MQTT topics from the vera config
+func getTopicsFromConfig(config *vera.Config) []string {
+	signals := getSimulatorSignalsFromConfig(config)
+	topics := make([]string, 0, len(signals))
+	for _, signal := range signals {
+		topics = append(topics, signal.Topic)
 	}
 
 	return topics
