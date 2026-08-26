@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -110,31 +111,58 @@ func TestGetDbcConfig(t *testing.T) {
 	}
 }
 
-func TestWriteTopicCatalog(t *testing.T) {
+func TestWriteTelemetryCatalog(t *testing.T) {
 	tests := []struct {
 		name    string
-		topics  []string
+		signals []simulatorSignal
 		path    func(string) string
 		want    string
 		wantErr string
 	}{
 		{
-			name:   "writes header",
-			topics: []string{"vehicle/speed", `vehicle/quoted"topic`, `vehicle/back\\slash`},
-			path:   func(directory string) string { return filepath.Join(directory, "topics.h") },
+			name: "writes signal metadata",
+			signals: []simulatorSignal{
+				{Topic: "vehicle/speed", Name: "Speed", Unit: "km/h", Min: 0, Max: 100},
+				{Topic: `vehicle/quoted"topic`, Name: "Temperature", Unit: "degC", Min: -40, Max: 215},
+				{Topic: `vehicle/back\\slash`, Name: "Voltage", Unit: "V", Min: 0.125, Max: 65.535},
+			},
+			path: func(directory string) string { return filepath.Join(directory, "signals.h") },
 			want: "// Code generated from config.dbc; DO NOT EDIT.\n#pragma once\n\n" +
-				"#define EPHOROS_TELEMETRY_SIMULATOR_TOPIC_COUNT 3\n\n" +
-				"static const char * const ephoros_telemetry_simulator_topics[] = {\n" +
-				"\t\"vehicle/speed\",\n\t\"vehicle/quoted\\\"topic\",\n\t\"vehicle/back\\\\\\\\slash\",\n};\n",
+				"typedef struct {\n" +
+				"\tconst char *topic;\n\tconst char *name;\n\tconst char *unit;\n" +
+				"\tfloat min;\n\tfloat max;\n" +
+				"} ephoros_telemetry_simulator_signal_t;\n\n" +
+				"#define EPHOROS_TELEMETRY_SIMULATOR_SIGNAL_COUNT 3\n\n" +
+				"static const ephoros_telemetry_simulator_signal_t ephoros_telemetry_simulator_signals[] = {\n" +
+				"\t{.topic = \"vehicle/speed\", .name = \"Speed\", .unit = \"km/h\", .min = 0.0f, .max = 100.0f},\n" +
+				"\t{.topic = \"vehicle/quoted\\\"topic\", .name = \"Temperature\", .unit = \"degC\", .min = -40.0f, .max = 215.0f},\n" +
+				"\t{.topic = \"vehicle/back\\\\\\\\slash\", .name = \"Voltage\", .unit = \"V\", .min = 0.125f, .max = 65.535f},\n" +
+				"};\n",
 		},
 		{
-			name:    "rejects empty topics",
-			path:    func(directory string) string { return filepath.Join(directory, "topics.h") },
+			name:    "rejects empty catalog",
+			path:    func(directory string) string { return filepath.Join(directory, "signals.h") },
 			wantErr: "DBC config contains no MQTT topics",
 		},
 		{
+			name: "rejects reversed bounds",
+			signals: []simulatorSignal{
+				{Topic: "vehicle/speed", Name: "Speed", Min: 100, Max: 0},
+			},
+			path:    func(directory string) string { return filepath.Join(directory, "signals.h") },
+			wantErr: `DBC signal "Speed" has minimum 100 greater than maximum 0`,
+		},
+		{
+			name: "rejects non-finite bounds",
+			signals: []simulatorSignal{
+				{Topic: "vehicle/speed", Name: "Speed", Min: 0, Max: float32(math.Inf(1))},
+			},
+			path:    func(directory string) string { return filepath.Join(directory, "signals.h") },
+			wantErr: `DBC signal "Speed" has non-finite bounds`,
+		},
+		{
 			name:    "create error",
-			topics:  []string{"vehicle/speed"},
+			signals: []simulatorSignal{{Topic: "vehicle/speed", Name: "Speed", Min: 0, Max: 100}},
 			path:    func(directory string) string { return directory },
 			wantErr: "is a directory",
 		},
@@ -145,7 +173,7 @@ func TestWriteTopicCatalog(t *testing.T) {
 			directory := t.TempDir()
 			outputPath := tt.path(directory)
 
-			err := writeTopicCatalog(outputPath, tt.topics)
+			err := writeTelemetryCatalog(outputPath, tt.signals)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)
@@ -158,6 +186,29 @@ func TestWriteTopicCatalog(t *testing.T) {
 			assert.Equal(t, tt.want, string(contents))
 		})
 	}
+}
+
+func TestGetSimulatorSignalsFromConfig(t *testing.T) {
+	config := &vera.Config{Messages: []vera.Message{
+		{Signals: []vera.Signal{
+			{
+				Name: "Speed", Unit: "km/h", Min: 0, Max: 100,
+				Metadata: vera.SignalMetadata{MQTTTopic: "vehicle/speed"},
+			},
+			{Name: "NoTopic", Unit: "V", Min: -1, Max: 1},
+		}},
+		{Signals: []vera.Signal{
+			{
+				Name: "SpeedBackup", Unit: "mph", Min: 5, Max: 80,
+				Metadata: vera.SignalMetadata{MQTTTopic: "vehicle/speed"},
+			},
+		}},
+	}}
+
+	assert.Equal(t, []simulatorSignal{
+		{Topic: "vehicle/speed", Name: "Speed", Unit: "km/h", Min: 0, Max: 100},
+		{Topic: "vehicle/speed", Name: "SpeedBackup", Unit: "mph", Min: 5, Max: 80},
+	}, getSimulatorSignalsFromConfig(config))
 }
 
 func TestGetTopicsFromConfig(t *testing.T) {
